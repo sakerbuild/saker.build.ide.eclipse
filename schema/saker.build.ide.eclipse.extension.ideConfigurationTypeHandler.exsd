@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Schema file written by PDE -->
+<schema targetNamespace="saker.build.ide.eclipse" xmlns="http://www.w3.org/2001/XMLSchema">
+<annotation>
+      <appinfo>
+         <meta.schema plugin="saker.build.ide.eclipse" id="saker.build.ide.eclipse.extension.ideConfigurationTypeHandler" name="IDE Configuration Parser"/>
+      </appinfo>
+      <documentation>
+         Extension point for specifying the behaviour of parsing an IDE configuration from build execution and applying it to an IProject instance.
+      </documentation>
+   </annotation>
+
+   <element name="extension">
+      <annotation>
+         <appinfo>
+            <meta.element />
+         </appinfo>
+      </annotation>
+      <complexType>
+         <choice minOccurs="1" maxOccurs="unbounded">
+            <element ref="parser"/>
+         </choice>
+         <attribute name="point" type="string" use="required">
+            <annotation>
+               <documentation>
+                  
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="id" type="string">
+            <annotation>
+               <documentation>
+                  
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="name" type="string">
+            <annotation>
+               <documentation>
+                  
+               </documentation>
+               <appinfo>
+                  <meta.attribute translatable="true"/>
+               </appinfo>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <element name="parser">
+      <complexType>
+         <attribute name="class" type="string" use="required">
+            <annotation>
+               <documentation>
+                  Class that interpretes the IDE configuration object produced by a build execution.
+               </documentation>
+               <appinfo>
+                  <meta.attribute kind="java" basedOn=":saker.build.ide.eclipse.extension.ideconfig.IIDEConfigurationTypeHandler"/>
+               </appinfo>
+            </annotation>
+         </attribute>
+         <attribute name="type" type="string" use="required">
+            <annotation>
+               <documentation>
+                  The string identifier of the IDE configuration type.
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="type_name" type="string">
+            <annotation>
+               <documentation>
+                  Name of the associated IDE configuration type. This is an user readable name for the IDE configuration type. E.g. &quot;Java&quot; for an IDE configuration that is associated with Java compilation.
+               </documentation>
+               <appinfo>
+                  <meta.attribute translatable="true"/>
+               </appinfo>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+
+   <annotation>
+      <appinfo>
+         <meta.section type="examples"/>
+      </appinfo>
+      <documentation>
+         [Enter extension point usage example here.]
+      </documentation>
+   </annotation>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="apiinfo"/>
+      </appinfo>
+      <documentation>
+         [Enter API information here.]
+      </documentation>
+   </annotation>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="implementation"/>
+      </appinfo>
+      <documentation>
+         [Enter information about supplied implementation of this extension point.]
+      </documentation>
+   </annotation>
+
+
+</schema>
