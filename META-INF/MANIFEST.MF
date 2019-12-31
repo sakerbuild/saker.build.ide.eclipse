@@ -1,8 +1,8 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: saker.build.ide.eclipse
+Bundle-Name: Saker.build system plug-in for Eclipse
 Bundle-SymbolicName: saker.build.ide.eclipse;singleton:=true
-Bundle-Version: 1.0.0.qualifier
+Bundle-Version: 0.8.0.qualifier
 Bundle-Activator: saker.build.ide.eclipse.Activator
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
@@ -21,3 +21,4 @@ Bundle-ClassPath: .
 Export-Package: saker.build.ide.eclipse.api,
  saker.build.ide.eclipse.extension.ideconfig,
  saker.build.ide.eclipse.extension.params
+Bundle-Vendor: saker.build
