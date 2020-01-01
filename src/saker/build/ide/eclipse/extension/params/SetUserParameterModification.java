@@ -2,7 +2,7 @@ package saker.build.ide.eclipse.extension.params;
 
 import java.util.Map;
 
-public final class SetUserParameterModification extends UserParameterModification {
+final class SetUserParameterModification extends UserParameterModification {
 	private String value;
 
 	public SetUserParameterModification(String key, String value) throws IllegalArgumentException {

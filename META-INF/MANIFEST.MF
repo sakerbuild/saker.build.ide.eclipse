@@ -20,5 +20,8 @@ Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: .
 Export-Package: saker.build.ide.eclipse.api,
  saker.build.ide.eclipse.extension.ideconfig,
- saker.build.ide.eclipse.extension.params
+ saker.build.ide.eclipse.extension.params,
+ saker.build.ide.eclipse.extension.script.information,
+ saker.build.ide.eclipse.extension.script.outline,
+ saker.build.ide.eclipse.extension.script.proposal
 Bundle-Vendor: saker.build
