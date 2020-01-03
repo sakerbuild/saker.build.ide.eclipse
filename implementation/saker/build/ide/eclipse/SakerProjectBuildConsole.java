@@ -44,8 +44,8 @@ import org.eclipse.ui.console.TextConsole;
 import saker.build.exception.ScriptPositionedExceptionView;
 import saker.build.file.path.SakerPath;
 import saker.build.ide.eclipse.hyperlink.IFileHyperLink;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.runtime.execution.SakerLog.CommonExceptionFormat;
-import saker.build.task.utils.TaskUtils;
 import saker.build.thirdparty.saker.util.ArrayUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
@@ -125,8 +125,7 @@ public class SakerProjectBuildConsole extends LogHighlightingConsole implements 
 			try (PrintStream ps = new PrintStream(err)) {
 				ps.println();
 				ps.println("Complete build exception stacktrace:");
-				TaskUtils.printTaskExceptionsOmitTransitive(exc, new PrintStream(err), null,
-						CommonExceptionFormat.FULL);
+				SakerLog.printFormatException(exc, CommonExceptionFormat.FULL);
 			}
 		} catch (IOException e) {
 			project.displayException(e);
