@@ -31,8 +31,8 @@ import org.eclipse.ui.console.IConsoleConstants;
 import org.eclipse.ui.console.IConsolePageParticipant;
 import org.eclipse.ui.part.IPageBookViewPage;
 
-import saker.build.exception.ScriptPositionedExceptionView;
 import saker.build.ide.eclipse.ISakerBuildInfoConsole.BuildInterfaceAccessor;
+import saker.build.ide.eclipse.ISakerBuildInfoConsole.BuildInterfaceAccessor.StackTraceAccessor;
 import saker.build.ide.eclipse.ISakerBuildInfoConsole.BuildStateObserver;
 
 public class SakerBuildInfoConsolePageParticipant implements IConsolePageParticipant, BuildStateObserver {
@@ -51,7 +51,7 @@ public class SakerBuildInfoConsolePageParticipant implements IConsolePagePartici
 
 	private IPageBookViewPage page;
 
-	private ISakerBuildInfoConsole console;
+	private SakerProjectBuildConsole console;
 	private StopAction stopBuildAction;
 
 	private ActionContributionItem consolePrintContribution;
@@ -73,7 +73,7 @@ public class SakerBuildInfoConsolePageParticipant implements IConsolePagePartici
 			//not the daemon console.
 			return;
 		}
-		ISakerBuildInfoConsole buildconsole = (ISakerBuildInfoConsole) console;
+		SakerProjectBuildConsole buildconsole = (SakerProjectBuildConsole) console;
 		this.console = buildconsole;
 		buildconsole.addBuildStateObserver(this);
 		IActionBars bars = page.getSite().getActionBars();
@@ -117,7 +117,7 @@ public class SakerBuildInfoConsolePageParticipant implements IConsolePagePartici
 			if (!enabled && stopBuildAction != null) {
 				stopBuildAction.disable();
 			}
-			ScriptPositionedExceptionView st = accessor.getStackTrace();
+			StackTraceAccessor st = accessor.getStackTraceAccessor();
 			if (consolePrintContribution != null) {
 				IToolBarManager tbm = page.getSite().getActionBars().getToolBarManager();
 				tbm.remove(consolePrintContribution);
@@ -133,22 +133,22 @@ public class SakerBuildInfoConsolePageParticipant implements IConsolePagePartici
 	}
 
 	private final class PrintCompleteStacktraceAction extends Action {
-		private ScriptPositionedExceptionView exception;
+		private StackTraceAccessor stacktrace;
 
-		public PrintCompleteStacktraceAction(ScriptPositionedExceptionView exception) {
+		public PrintCompleteStacktraceAction(StackTraceAccessor stacktrace) {
 			super("Print complete stacktrace", IMAGE_DESCRIPTOR_CONSOLE_STACKTRACE);
-			this.exception = exception;
+			this.stacktrace = stacktrace;
 		}
 
 		@Override
 		public void run() {
 			synchronized (SakerBuildInfoConsolePageParticipant.this) {
-				ScriptPositionedExceptionView e = this.exception;
+				StackTraceAccessor e = this.stacktrace;
 				if (e == null) {
 					return;
 				}
-				console.printCompleteStackTrace(e);
-				this.exception = null;
+				e.printToConsole(console);
+				this.stacktrace = null;
 				if (consolePrintContribution != null && consolePrintContribution.getAction() == this) {
 					IToolBarManager tbm = page.getSite().getActionBars().getToolBarManager();
 					tbm.remove(consolePrintContribution);

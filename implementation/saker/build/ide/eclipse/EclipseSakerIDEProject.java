@@ -800,7 +800,25 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				.log(new Status(Status.ERROR, Activator.PLUGIN_ID, "Error on project: " + ideProject.getName(), e));
 	}
 
-	private static class ProjectBuildConsoleInterfaceAccessor implements BuildInterfaceAccessor {
+	private static final class ProjectBuildConsoleInterfaceAccessor implements BuildInterfaceAccessor {
+		private static final class ProjectBuildStackTraceAccessor implements StackTraceAccessor {
+			private ScriptPositionedExceptionView stacktrace;
+
+			private ProjectBuildStackTraceAccessor(ScriptPositionedExceptionView stacktrace) {
+				this.stacktrace = stacktrace;
+			}
+
+			@Override
+			public synchronized void printToConsole(ISakerBuildInfoConsole console) {
+				ScriptPositionedExceptionView st = stacktrace;
+				if (st == null) {
+					return;
+				}
+				this.stacktrace = null;
+				((SakerProjectBuildConsole) console).printCompleteStackTrace(st);
+			}
+		}
+
 		private final ProgressMonitorWrapper wrapper;
 		private Thread buildThread = Thread.currentThread();
 		private ScriptPositionedExceptionView stackTrace;
@@ -830,10 +848,13 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		}
 
 		@Override
-		public ScriptPositionedExceptionView getStackTrace() {
-			return stackTrace;
+		public StackTraceAccessor getStackTraceAccessor() {
+			ScriptPositionedExceptionView stacktrace = stackTrace;
+			if (stacktrace == null) {
+				return null;
+			}
+			return new ProjectBuildStackTraceAccessor(stacktrace);
 		}
-
 	}
 
 	private static class ProgressMonitorWrapper implements ExecutionProgressMonitor, TaskProgressMonitor {

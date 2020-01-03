@@ -118,7 +118,6 @@ public class SakerProjectBuildConsole extends LogHighlightingConsole implements 
 		buildStateObservers.remove(observer);
 	}
 
-	@Override
 	public void printCompleteStackTrace(ScriptPositionedExceptionView exc) {
 		try (IOConsoleOutputStream err = newOutputStream()) {
 			Display display = PlatformUI.getWorkbench().getDisplay();
