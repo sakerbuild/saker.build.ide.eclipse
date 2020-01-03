@@ -19,8 +19,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
@@ -29,12 +31,15 @@ import org.eclipse.ui.console.IConsoleConstants;
 import org.eclipse.ui.console.IConsolePageParticipant;
 import org.eclipse.ui.part.IPageBookViewPage;
 
+import saker.build.exception.ScriptPositionedExceptionView;
 import saker.build.ide.eclipse.ISakerBuildInfoConsole.BuildInterfaceAccessor;
 import saker.build.ide.eclipse.ISakerBuildInfoConsole.BuildStateObserver;
 
 public class SakerBuildInfoConsolePageParticipant implements IConsolePageParticipant, BuildStateObserver {
 	private static final String TEXT_STOP_BUILD = "Stop build";
 	private static final String TEXT_INTERRUPT_BUILD = "Interrupt build";
+	private static final ImageDescriptor IMAGE_DESCRIPTOR_CONSOLE_STACKTRACE = Activator
+			.getImageDescriptor("icons/console_stacktrace.png");
 	private static final ImageDescriptor IMAGE_DESCRIPTOR_INTERRUPT_DISABLED = Activator
 			.getImageDescriptor("icons/stop_interrupt_disabled.png");
 	private static final ImageDescriptor IMAGE_DESCRIPTOR_INTERRUPT = Activator
@@ -44,8 +49,12 @@ public class SakerBuildInfoConsolePageParticipant implements IConsolePagePartici
 	private static final ImageDescriptor IMAGE_DESCRIPTOR_STOP_DISABLED = PlatformUI.getWorkbench().getSharedImages()
 			.getImageDescriptor(ISharedImages.IMG_ELCL_STOP_DISABLED);
 
+	private IPageBookViewPage page;
+
 	private ISakerBuildInfoConsole console;
 	private StopAction stopBuildAction;
+
+	private ActionContributionItem consolePrintContribution;
 
 	private Set<BuildInterfaceAccessor> buildAccessors = new HashSet<>();
 
@@ -56,6 +65,7 @@ public class SakerBuildInfoConsolePageParticipant implements IConsolePagePartici
 
 	@Override
 	public synchronized void init(IPageBookViewPage page, IConsole console) {
+		this.page = page;
 		if (this.console != null) {
 			return;
 		}
@@ -106,6 +116,45 @@ public class SakerBuildInfoConsolePageParticipant implements IConsolePagePartici
 			boolean enabled = !buildAccessors.isEmpty();
 			if (!enabled && stopBuildAction != null) {
 				stopBuildAction.disable();
+			}
+			ScriptPositionedExceptionView st = accessor.getStackTrace();
+			if (consolePrintContribution != null) {
+				IToolBarManager tbm = page.getSite().getActionBars().getToolBarManager();
+				tbm.remove(consolePrintContribution);
+				Display.getDefault().syncExec(() -> tbm.update(false));
+			}
+			if (st != null) {
+				consolePrintContribution = new ActionContributionItem(new PrintCompleteStacktraceAction(st));
+				IToolBarManager tbm = page.getSite().getActionBars().getToolBarManager();
+				tbm.prependToGroup(IConsoleConstants.LAUNCH_GROUP, consolePrintContribution);
+				Display.getDefault().asyncExec(() -> tbm.update(false));
+			}
+		}
+	}
+
+	private final class PrintCompleteStacktraceAction extends Action {
+		private ScriptPositionedExceptionView exception;
+
+		public PrintCompleteStacktraceAction(ScriptPositionedExceptionView exception) {
+			super("Print complete stacktrace", IMAGE_DESCRIPTOR_CONSOLE_STACKTRACE);
+			this.exception = exception;
+		}
+
+		@Override
+		public void run() {
+			synchronized (SakerBuildInfoConsolePageParticipant.this) {
+				ScriptPositionedExceptionView e = this.exception;
+				if (e == null) {
+					return;
+				}
+				console.printCompleteStackTrace(e);
+				this.exception = null;
+				if (consolePrintContribution != null && consolePrintContribution.getAction() == this) {
+					IToolBarManager tbm = page.getSite().getActionBars().getToolBarManager();
+					tbm.remove(consolePrintContribution);
+					consolePrintContribution = null;
+					Display.getDefault().asyncExec(() -> tbm.update(false));
+				}
 			}
 		}
 	}

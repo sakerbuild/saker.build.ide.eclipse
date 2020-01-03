@@ -15,6 +15,8 @@
  */
 package saker.build.ide.eclipse;
 
+import saker.build.exception.ScriptPositionedExceptionView;
+
 public interface ISakerBuildInfoConsole {
 	public interface BuildStateObserver {
 		public void buildStarted(BuildInterfaceAccessor accessor);
@@ -26,9 +28,13 @@ public interface ISakerBuildInfoConsole {
 		public void stop();
 
 		public void interruptAndStop();
+
+		public ScriptPositionedExceptionView getStackTrace();
 	}
 
 	public void addBuildStateObserver(BuildStateObserver observer);
 
 	public void removeBuildStateObserver(BuildStateObserver observer);
+
+	public void printCompleteStackTrace(ScriptPositionedExceptionView exc);
 }

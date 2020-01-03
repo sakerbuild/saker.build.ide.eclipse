@@ -15,6 +15,8 @@
  */
 package saker.build.ide.eclipse;
 
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,12 +34,18 @@ import org.eclipse.swt.custom.LineStyleEvent;
 import org.eclipse.swt.custom.LineStyleListener;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.console.IOConsoleOutputStream;
 import org.eclipse.ui.console.IPatternMatchListener;
 import org.eclipse.ui.console.PatternMatchEvent;
 import org.eclipse.ui.console.TextConsole;
 
+import saker.build.exception.ScriptPositionedExceptionView;
 import saker.build.file.path.SakerPath;
 import saker.build.ide.eclipse.hyperlink.IFileHyperLink;
+import saker.build.runtime.execution.SakerLog.CommonExceptionFormat;
+import saker.build.task.utils.TaskUtils;
 import saker.build.thirdparty.saker.util.ArrayUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
@@ -108,6 +116,22 @@ public class SakerProjectBuildConsole extends LogHighlightingConsole implements 
 	@Override
 	public void removeBuildStateObserver(BuildStateObserver observer) {
 		buildStateObservers.remove(observer);
+	}
+
+	@Override
+	public void printCompleteStackTrace(ScriptPositionedExceptionView exc) {
+		try (IOConsoleOutputStream err = newOutputStream()) {
+			Display display = PlatformUI.getWorkbench().getDisplay();
+			err.setColor(display.getSystemColor(SWT.COLOR_RED));
+			try (PrintStream ps = new PrintStream(err)) {
+				ps.println();
+				ps.println("Complete build exception stacktrace:");
+				TaskUtils.printTaskExceptionsOmitTransitive(exc, new PrintStream(err), null,
+						CommonExceptionFormat.FULL);
+			}
+		} catch (IOException e) {
+			project.displayException(e);
+		}
 	}
 
 	@Override

@@ -63,6 +63,9 @@ import org.eclipse.jface.dialogs.IconAndMessageDialog;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.layout.GridDataFactory;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.DocumentEvent;
+import org.eclipse.jface.text.IDocumentListener;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.CheckStateChangedEvent;
 import org.eclipse.jface.viewers.CheckboxTreeViewer;
@@ -91,6 +94,7 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.console.IHyperlink;
 import org.eclipse.ui.console.IOConsoleInputStream;
 import org.eclipse.ui.console.IOConsoleOutputStream;
 import org.eclipse.ui.dialogs.ListDialog;
@@ -799,6 +803,7 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 	private static class ProjectBuildConsoleInterfaceAccessor implements BuildInterfaceAccessor {
 		private final ProgressMonitorWrapper wrapper;
 		private Thread buildThread = Thread.currentThread();
+		private ScriptPositionedExceptionView stackTrace;
 
 		public ProjectBuildConsoleInterfaceAccessor(ProgressMonitorWrapper wrapper) {
 			this.wrapper = wrapper;
@@ -822,6 +827,11 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 			synchronized (this) {
 				this.buildThread = null;
 			}
+		}
+
+		@Override
+		public ScriptPositionedExceptionView getStackTrace() {
+			return stackTrace;
 		}
 
 	}
@@ -1098,6 +1108,7 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				if (result != null) {
 					ScriptPositionedExceptionView posexcview = result.getPositionedExceptionView();
 					if (posexcview != null) {
+						consoleaccessor.stackTrace = posexcview;
 						//TODO make exception format configureable
 						TaskUtils.printTaskExceptionsOmitTransitive(posexcview, new PrintStream(err),
 								executionworkingdir, CommonExceptionFormat.DEFAULT_FORMAT);
