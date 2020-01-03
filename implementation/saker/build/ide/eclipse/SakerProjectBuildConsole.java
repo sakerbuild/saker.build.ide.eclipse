@@ -125,7 +125,7 @@ public class SakerProjectBuildConsole extends LogHighlightingConsole implements 
 			try (PrintStream ps = new PrintStream(err)) {
 				ps.println();
 				ps.println("Complete build exception stacktrace:");
-				SakerLog.printFormatException(exc, CommonExceptionFormat.FULL);
+				SakerLog.printFormatException(exc, ps, CommonExceptionFormat.FULL);
 			}
 		} catch (IOException e) {
 			project.displayException(e);
