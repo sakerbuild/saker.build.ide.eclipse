@@ -41,6 +41,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.ToolBarManager;
+import org.eclipse.jface.resource.ColorRegistry;
 import org.eclipse.jface.text.AbstractInformationControl;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.DefaultIndentLineAutoEditStrategy;
@@ -1740,7 +1741,6 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 
 	public BuildFileEditor() {
 		setSourceViewerConfiguration(configuration);
-		ITheme currentTheme = PlatformUI.getWorkbench().getThemeManager().getCurrentTheme();
 		themeListener = new IPropertyChangeListener() {
 			@Override
 			public void propertyChange(PropertyChangeEvent event) {
@@ -1752,9 +1752,22 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 				}
 			}
 		};
-		currentTheme.getColorRegistry().addListener(themeListener);
-		RGB rgb = currentTheme.getColorRegistry().getRGB(BACKGROUND_COLOR_REGISTRY_PROPERTY_NAME);
-		currentTokenTheme = rgb.getHSB()[2] < 0.4f ? TokenStyle.THEME_DARK : TokenStyle.THEME_LIGHT;
+		ColorRegistry colorregistry = PlatformUI.getWorkbench().getThemeManager().getCurrentTheme().getColorRegistry();
+		colorregistry.addListener(themeListener);
+		boolean darktheme = isCurrentThemeDark(colorregistry);
+		currentTokenTheme = darktheme ? TokenStyle.THEME_DARK : TokenStyle.THEME_LIGHT;
+
+	}
+
+	public static boolean isCurrentThemeDark() {
+		ColorRegistry colorregistry = PlatformUI.getWorkbench().getThemeManager().getCurrentTheme().getColorRegistry();
+		return isCurrentThemeDark(colorregistry);
+	}
+
+	private static boolean isCurrentThemeDark(ColorRegistry colorregistry) {
+		RGB rgb = colorregistry.getRGB(BACKGROUND_COLOR_REGISTRY_PROPERTY_NAME);
+		boolean darktheme = rgb.getHSB()[2] < 0.4f;
+		return darktheme;
 	}
 
 	@Override

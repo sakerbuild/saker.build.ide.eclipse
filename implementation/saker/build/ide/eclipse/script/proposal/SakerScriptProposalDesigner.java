@@ -15,6 +15,7 @@
  */
 package saker.build.ide.eclipse.script.proposal;
 
+import saker.build.ide.eclipse.BuildFileEditor;
 import saker.build.ide.eclipse.extension.script.proposal.IScriptProposalDesigner;
 import saker.build.ide.eclipse.extension.script.proposal.IScriptProposalEntry;
 import saker.build.ide.eclipse.extension.script.proposal.IScriptProposalsRoot;
@@ -45,15 +46,16 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner {
 	@Override
 	public void process(IScriptProposalsRoot proposalsroot) {
 		System.out.println("SakerScriptProposalDesigner.process()");
+		boolean darktheme = BuildFileEditor.isCurrentThemeDark();
 		for (IScriptProposalEntry proposal : proposalsroot.getProposals()) {
 			if (!PROPOSAL_SCHEMA_IDENTIFIER.equals(proposal.getSchemaIdentifier())) {
 				continue;
 			}
-			processProposal(proposal);
+			processProposal(proposal, darktheme);
 		}
 	}
 
-	private static void processProposal(IScriptProposalEntry proposal) {
+	private static void processProposal(IScriptProposalEntry proposal, boolean darktheme) {
 		String type = ObjectUtils.getMapValue(proposal.getSchemaMetaData(), PROPOSAL_META_DATA_TYPE);
 		if (type == null) {
 			return;
@@ -63,11 +65,11 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner {
 			case PROPOSAL_META_DATA_TYPE_VARIABLE:
 			case PROPOSAL_META_DATA_TYPE_STATIC_VARIABLE:
 			case PROPOSAL_META_DATA_TYPE_GLOBAL_VARIABLE: {
-				proposal.setProposalImage(SakerScriptOutlineDesigner.IMG_VAR);
+				proposal.setProposalImage(SakerScriptOutlineDesigner.getImgVar(darktheme));
 				break;
 			}
 			case PROPOSAL_META_DATA_TYPE_TASK: {
-				proposal.setProposalImage(SakerScriptOutlineDesigner.IMG_TASK);
+				proposal.setProposalImage(SakerScriptOutlineDesigner.getImgTask(darktheme));
 				break;
 			}
 			default: {

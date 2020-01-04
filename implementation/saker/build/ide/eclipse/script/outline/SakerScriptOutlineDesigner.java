@@ -20,33 +20,106 @@ import java.util.List;
 import org.eclipse.swt.graphics.Image;
 
 import saker.build.ide.eclipse.Activator;
+import saker.build.ide.eclipse.BuildFileEditor;
 import saker.build.ide.eclipse.extension.script.outline.IScriptOutlineDesigner;
 import saker.build.ide.eclipse.extension.script.outline.IScriptOutlineEntry;
 import saker.build.ide.eclipse.extension.script.outline.IScriptOutlineRoot;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class SakerScriptOutlineDesigner implements IScriptOutlineDesigner {
-	public static final Image IMG_BOOL_FALSE = Activator.getImageDescriptor("icons/bool_false.png").createImage();
-	public static final Image IMG_BOOL_TRUE = Activator.getImageDescriptor("icons/bool_true.png").createImage();
-	public static final Image IMG_STRING = Activator.getImageDescriptor("icons/string.png").createImage();
-	public static final Image IMG_STRINGLITERAL = Activator.getImageDescriptor("icons/stringliteral.png").createImage();
-	public static final Image IMG_NUM = Activator.getImageDescriptor("icons/num.png").createImage();
-	public static final Image IMG_MAP = Activator.getImageDescriptor("icons/map.png").createImage();
-	public static final Image IMG_LIST = Activator.getImageDescriptor("icons/list.png").createImage();
-	public static final Image IMG_TASK = Activator.getImageDescriptor("icons/task.png").createImage();
-	public static final Image IMG_TARGET = Activator.getImageDescriptor("icons/target.png").createImage();
-	public static final Image IMG_INPARAM = Activator.getImageDescriptor("icons/inparam.png").createImage();
-	public static final Image IMG_OUTPARAM = Activator.getImageDescriptor("icons/outparam.png").createImage();
-	public static final Image IMG_FOR = Activator.getImageDescriptor("icons/foreach.png").createImage();
-	public static final Image IMG_VAR = Activator.getImageDescriptor("icons/var.png").createImage();
+	private static final Image IMG_BOOL_FALSE = Activator.getImageDescriptor("icons/bool_false.png").createImage();
+	private static final Image IMG_BOOL_TRUE = Activator.getImageDescriptor("icons/bool_true.png").createImage();
+	private static final Image IMG_STRING = Activator.getImageDescriptor("icons/string.png").createImage();
+	private static final Image IMG_STRINGLITERAL = Activator.getImageDescriptor("icons/stringliteral.png")
+			.createImage();
+	private static final Image IMG_NUM = Activator.getImageDescriptor("icons/num.png").createImage();
+	private static final Image IMG_MAP = Activator.getImageDescriptor("icons/map.png").createImage();
+	private static final Image IMG_LIST = Activator.getImageDescriptor("icons/list.png").createImage();
+	private static final Image IMG_TASK = Activator.getImageDescriptor("icons/task.png").createImage();
+	private static final Image IMG_TARGET = Activator.getImageDescriptor("icons/target.png").createImage();
+	private static final Image IMG_INPARAM = Activator.getImageDescriptor("icons/inparam.png").createImage();
+	private static final Image IMG_OUTPARAM = Activator.getImageDescriptor("icons/outparam.png").createImage();
+	private static final Image IMG_FOR = Activator.getImageDescriptor("icons/foreach.png").createImage();
+	private static final Image IMG_VAR = Activator.getImageDescriptor("icons/var.png").createImage();
+
+	private static final Image DARK_IMG_BOOL_FALSE = Activator.getImageDescriptor("icons/bool_false_dark.png")
+			.createImage();
+	private static final Image DARK_IMG_BOOL_TRUE = Activator.getImageDescriptor("icons/bool_true_dark.png")
+			.createImage();
+	private static final Image DARK_IMG_STRING = Activator.getImageDescriptor("icons/string_dark.png").createImage();
+	private static final Image DARK_IMG_STRINGLITERAL = Activator.getImageDescriptor("icons/stringliteral_dark.png")
+			.createImage();
+	private static final Image DARK_IMG_NUM = Activator.getImageDescriptor("icons/num_dark.png").createImage();
+	private static final Image DARK_IMG_MAP = Activator.getImageDescriptor("icons/map_dark.png").createImage();
+	private static final Image DARK_IMG_LIST = Activator.getImageDescriptor("icons/list_dark.png").createImage();
+	private static final Image DARK_IMG_TASK = Activator.getImageDescriptor("icons/task_dark.png").createImage();
+	private static final Image DARK_IMG_TARGET = Activator.getImageDescriptor("icons/target_dark.png").createImage();
+	private static final Image DARK_IMG_INPARAM = Activator.getImageDescriptor("icons/inparam_dark.png").createImage();
+	private static final Image DARK_IMG_OUTPARAM = Activator.getImageDescriptor("icons/outparam_dark.png")
+			.createImage();
+	private static final Image DARK_IMG_FOR = Activator.getImageDescriptor("icons/foreach_dark.png").createImage();
+	private static final Image DARK_IMG_VAR = Activator.getImageDescriptor("icons/var_dark.png").createImage();
+
+	public static Image getImgBoolFalse(boolean darktheme) {
+		return darktheme ? DARK_IMG_BOOL_FALSE : IMG_BOOL_FALSE;
+	}
+
+	public static Image getImgBoolTrue(boolean darktheme) {
+		return darktheme ? DARK_IMG_BOOL_TRUE : IMG_BOOL_TRUE;
+	}
+
+	public static Image getImgString(boolean darktheme) {
+		return darktheme ? DARK_IMG_STRING : IMG_STRING;
+	}
+
+	public static Image getImgStringliteral(boolean darktheme) {
+		return darktheme ? DARK_IMG_STRINGLITERAL : IMG_STRINGLITERAL;
+	}
+
+	public static Image getImgNum(boolean darktheme) {
+		return darktheme ? DARK_IMG_NUM : IMG_NUM;
+	}
+
+	public static Image getImgMap(boolean darktheme) {
+		return darktheme ? DARK_IMG_MAP : IMG_MAP;
+	}
+
+	public static Image getImgList(boolean darktheme) {
+		return darktheme ? DARK_IMG_LIST : IMG_LIST;
+	}
+
+	public static Image getImgTask(boolean darktheme) {
+		return darktheme ? DARK_IMG_TASK : IMG_TASK;
+	}
+
+	public static Image getImgTarget(boolean darktheme) {
+		return darktheme ? DARK_IMG_TARGET : IMG_TARGET;
+	}
+
+	public static Image getImgInparam(boolean darktheme) {
+		return darktheme ? DARK_IMG_INPARAM : IMG_INPARAM;
+	}
+
+	public static Image getImgOutparam(boolean darktheme) {
+		return darktheme ? DARK_IMG_OUTPARAM : IMG_OUTPARAM;
+	}
+
+	public static Image getImgFor(boolean darktheme) {
+		return darktheme ? DARK_IMG_FOR : IMG_FOR;
+	}
+
+	public static Image getImgVar(boolean darktheme) {
+		return darktheme ? DARK_IMG_VAR : IMG_VAR;
+	}
 
 	@Override
 	public void process(IScriptOutlineRoot outlineroot) {
 		List<? extends IScriptOutlineEntry> roots = outlineroot.getRootEntries();
-		processEntries(roots);
+		boolean darktheme = BuildFileEditor.isCurrentThemeDark();
+		processEntries(roots, darktheme);
 	}
 
-	private void processEntry(IScriptOutlineEntry entry) {
+	private void processEntry(IScriptOutlineEntry entry, boolean darktheme) {
 		String entryschema = entry.getSchemaIdentifier();
 		if (entryschema != null) {
 			switch (entryschema) {
@@ -56,34 +129,34 @@ public class SakerScriptOutlineDesigner implements IScriptOutlineDesigner {
 				}
 				case "saker.script.literal.boolean": {
 					if (Boolean.parseBoolean(entry.getLabel())) {
-						entry.setWidgetImage(IMG_BOOL_TRUE);
+						entry.setWidgetImage(getImgBoolTrue(darktheme));
 					} else {
-						entry.setWidgetImage(IMG_BOOL_FALSE);
+						entry.setWidgetImage(getImgBoolFalse(darktheme));
 					}
 					break;
 				}
 				case "saker.script.task": {
-					entry.setWidgetImage(IMG_TASK);
+					entry.setWidgetImage(getImgTask(darktheme));
 					break;
 				}
 				case "saker.script.list": {
-					entry.setWidgetImage(IMG_LIST);
+					entry.setWidgetImage(getImgList(darktheme));
 					break;
 				}
 				case "saker.script.map": {
-					entry.setWidgetImage(IMG_MAP);
+					entry.setWidgetImage(getImgMap(darktheme));
 					break;
 				}
 				case "saker.script.literal.number": {
-					entry.setWidgetImage(IMG_NUM);
+					entry.setWidgetImage(getImgNum(darktheme));
 					break;
 				}
 				case "saker.script.literal.string": {
-					entry.setWidgetImage(IMG_STRINGLITERAL);
+					entry.setWidgetImage(getImgStringliteral(darktheme));
 					break;
 				}
 				case "saker.script.literal.compound-string": {
-					entry.setWidgetImage(IMG_STRING);
+					entry.setWidgetImage(getImgString(darktheme));
 					break;
 				}
 				case "saker.script.literal.map.entry": {
@@ -91,23 +164,23 @@ public class SakerScriptOutlineDesigner implements IScriptOutlineDesigner {
 					break;
 				}
 				case "saker.script.target": {
-					entry.setWidgetImage(IMG_TARGET);
+					entry.setWidgetImage(getImgTarget(darktheme));
 					break;
 				}
 				case "saker.script.target.parameter.in": {
-					entry.setWidgetImage(IMG_INPARAM);
+					entry.setWidgetImage(getImgInparam(darktheme));
 					break;
 				}
 				case "saker.script.target.parameter.out": {
-					entry.setWidgetImage(IMG_OUTPARAM);
+					entry.setWidgetImage(getImgOutparam(darktheme));
 					break;
 				}
 				case "saker.script.foreach": {
-					entry.setWidgetImage(IMG_FOR);
+					entry.setWidgetImage(getImgFor(darktheme));
 					break;
 				}
 				case "saker.script.var": {
-					entry.setWidgetImage(IMG_VAR);
+					entry.setWidgetImage(getImgVar(darktheme));
 					break;
 				}
 				default: {
@@ -115,15 +188,15 @@ public class SakerScriptOutlineDesigner implements IScriptOutlineDesigner {
 					if (coaltype != null) {
 						switch (coaltype) {
 							case "map": {
-								entry.setWidgetImage(IMG_MAP);
+								entry.setWidgetImage(getImgMap(darktheme));
 								break;
 							}
 							case "list": {
-								entry.setWidgetImage(IMG_LIST);
+								entry.setWidgetImage(getImgList(darktheme));
 								break;
 							}
 							case "string": {
-								entry.setWidgetImage(IMG_STRING);
+								entry.setWidgetImage(getImgString(darktheme));
 								break;
 							}
 							case "literal.null": {
@@ -131,23 +204,23 @@ public class SakerScriptOutlineDesigner implements IScriptOutlineDesigner {
 								break;
 							}
 							case "literal.boolean.true": {
-								entry.setWidgetImage(IMG_BOOL_TRUE);
+								entry.setWidgetImage(getImgBoolTrue(darktheme));
 								break;
 							}
 							case "literal.boolean.false": {
-								entry.setWidgetImage(IMG_BOOL_FALSE);
+								entry.setWidgetImage(getImgBoolFalse(darktheme));
 								break;
 							}
 							case "literal.number": {
-								entry.setWidgetImage(IMG_NUM);
+								entry.setWidgetImage(getImgNum(darktheme));
 								break;
 							}
 							case "literal.string": {
-								entry.setWidgetImage(IMG_STRINGLITERAL);
+								entry.setWidgetImage(getImgStringliteral(darktheme));
 								break;
 							}
 							case "var": {
-								entry.setWidgetImage(IMG_VAR);
+								entry.setWidgetImage(getImgVar(darktheme));
 								break;
 							}
 							default: {
@@ -159,15 +232,15 @@ public class SakerScriptOutlineDesigner implements IScriptOutlineDesigner {
 				}
 			}
 		}
-		processEntries(entry.getChildren());
+		processEntries(entry.getChildren(), darktheme);
 	}
 
-	private void processEntries(List<? extends IScriptOutlineEntry> children) {
+	private void processEntries(List<? extends IScriptOutlineEntry> children, boolean darktheme) {
 		if (ObjectUtils.isNullOrEmpty(children)) {
 			return;
 		}
 		for (IScriptOutlineEntry child : children) {
-			processEntry(child);
+			processEntry(child, darktheme);
 		}
 	}
 
