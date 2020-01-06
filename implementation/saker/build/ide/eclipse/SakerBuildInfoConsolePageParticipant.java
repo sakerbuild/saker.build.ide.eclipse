@@ -107,6 +107,12 @@ public class SakerBuildInfoConsolePageParticipant implements IConsolePagePartici
 			if (stopBuildAction != null) {
 				stopBuildAction.resetEnable();
 			}
+			if (consolePrintContribution != null) {
+				IToolBarManager tbm = page.getSite().getActionBars().getToolBarManager();
+				tbm.remove(consolePrintContribution);
+				Display.getDefault().syncExec(() -> tbm.update(false));
+				consolePrintContribution = null;
+			}
 		}
 	}
 
