@@ -559,7 +559,11 @@ public class RepositoriesProjectPropertyPage extends PropertyPage {
 
 		@Override
 		public String visit(NestRepositoryClassPathLocationIDEProperty property, Void param) {
-			return "Nest repository v" + NestRepositoryClassPathLocation.DEFAULT_VERSION;
+			String ver = property.getVersion();
+			if (ver != null) {
+				return "Nest repository v" + ver;
+			}
+			return "Nest repository v" + NestRepositoryClassPathLocation.DEFAULT_VERSION + " (default)";
 		}
 	}
 

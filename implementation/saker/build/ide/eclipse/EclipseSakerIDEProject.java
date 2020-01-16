@@ -1716,6 +1716,10 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 						+ SakerIDEProject.C_NEST_REPOSITORY + SakerIDEProject.E_ILLEGAL: {
 					return "Invalid service configuration for script configuration.";
 				}
+				case SakerIDEProject.NS_SCRIPT_CONFIGURATION + SakerIDEProject.C_SERVICE
+						+ SakerIDEProject.C_NEST_REPOSITORY + SakerIDEProject.E_VERSION_FORMAT: {
+					return "Invalid version number format for saker.nest repository classpath.";
+				}
 				case SakerIDEProject.NS_SCRIPT_CONFIGURATION + SakerIDEProject.C_CLASSPATH + SakerIDEProject.C_SERVICE
 						+ SakerIDEProject.E_INVALID_COMBINATION: {
 					return "Invalid class path and service combination for script configuration.";

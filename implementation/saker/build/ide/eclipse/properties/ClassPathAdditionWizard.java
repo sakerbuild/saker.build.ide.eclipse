@@ -67,6 +67,7 @@ import saker.build.ide.support.properties.JarClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.NestRepositoryClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.NestRepositoryFactoryServiceEnumeratorIDEProperty;
 import saker.build.runtime.classpath.HttpUrlJarFileClassPathLocation;
+import saker.build.runtime.params.NestRepositoryClassPathLocation;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
 import saker.build.thirdparty.saker.util.function.Functionals;
@@ -81,6 +82,7 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 
 	protected final ClassPathTypeChooserWizardPage classPathTypeChooser;
 
+	protected final NestRepositoryVersionChoosingWizardPage classPathNestVersionChooser;
 	protected final FileChoosingWizardPage classPathFileArchiveChooser;
 	protected final NetworkArchiveChoosingWizardPage classPathNetworkArchiveChooser;
 
@@ -97,6 +99,7 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 		this.project = project;
 		this.editedClassPathLocationProperty = editedProperty;
 		this.flags = flags;
+		this.classPathNestVersionChooser = new NestRepositoryVersionChoosingWizardPage();
 		this.classPathTypeChooser = new ClassPathTypeChooserWizardPage();
 		this.classPathFileArchiveChooser = new FileChoosingWizardPage();
 		this.classPathNetworkArchiveChooser = new NetworkArchiveChoosingWizardPage();
@@ -130,6 +133,7 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 	@Override
 	public void addPages(Wizard wizard) {
 		wizard.addPage(classPathTypeChooser);
+		wizard.addPage(classPathNestVersionChooser);
 		wizard.addPage(classPathFileArchiveChooser);
 		wizard.addPage(classPathNetworkArchiveChooser);
 	}
@@ -162,7 +166,7 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 					Functionals.valSupplier(classPathNetworkArchiveChooser));
 			if (!((flags & FLAG_NO_NEST_REPOSITORY_CLASSPATH) == FLAG_NO_NEST_REPOSITORY_CLASSPATH)) {
 				selectionPageSuppliers.put(TYPE_NEST_REPOSITORY_CLASS_PATH,
-						() -> getClassPathContinuation(new NestRepositoryClassPathLocationIDEProperty()));
+						Functionals.valSupplier(classPathNestVersionChooser));
 			}
 			if (!((flags & FLAG_NO_SAKERSCRIPT_CLASSPATH) == FLAG_NO_SAKERSCRIPT_CLASSPATH)) {
 				selectionPageSuppliers.put(TYPE_SAKER_SCRIPT_CLASS_PATH,
@@ -301,6 +305,140 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 		}
 	}
 
+	public class NestRepositoryVersionChoosingWizardPage extends SakerWizardPage
+			implements ClassPathLocationWizardResult, FinishablePage {
+		private Text versionText;
+
+		public NestRepositoryVersionChoosingWizardPage() {
+		}
+
+		@Override
+		public String getTitle() {
+			return "Nest repository version";
+		}
+
+		@Override
+		public String getDescription() {
+			return "Set the repository version to use.";
+		}
+
+		@Override
+		public void createControl(Composite parent) {
+			Composite composite = new Composite(parent, SWT.NONE);
+			GridLayout layout = new GridLayout();
+			layout.numColumns = 2;
+			layout.marginLeft = 5;
+			layout.marginRight = 5;
+			composite.setLayout(layout);
+
+			GridData labelgd = new GridData();
+
+			Label archivepathlabel = new Label(composite, SWT.NONE);
+			archivepathlabel.setText("Nest repository version:");
+			archivepathlabel.setLayoutData(labelgd);
+
+			versionText = new Text(composite, SWT.BORDER);
+			versionText.setMessage("Version number");
+			GridData textgd = new GridData();
+			textgd.grabExcessHorizontalSpace = true;
+			textgd.horizontalAlignment = GridData.FILL;
+			versionText.setLayoutData(textgd);
+			versionText.addListener(SWT.Modify, new WizardPageButtonsUpdatingListener(this));
+
+			Label definfolabel = new Label(composite, SWT.NONE);
+			definfolabel.setText("Default version: " + NestRepositoryClassPathLocation.DEFAULT_VERSION
+					+ " (leave text box empty to automatically use it)");
+			definfolabel.setLayoutData(GridDataFactory.fillDefaults().span(2, 1).create());
+
+			if (editedClassPathLocationProperty != null) {
+				editedClassPathLocationProperty.accept(new ClassPathLocationIDEProperty.Visitor<Void, Void>() {
+					@Override
+					public Void visit(JarClassPathLocationIDEProperty property, Void param) {
+						return null;
+					}
+
+					@Override
+					public Void visit(HttpUrlJarClassPathLocationIDEProperty property, Void param) {
+						return null;
+					}
+
+					@Override
+					public Void visit(BuiltinScriptingLanguageClassPathLocationIDEProperty property, Void param) {
+						return null;
+					}
+
+					@Override
+					public Void visit(NestRepositoryClassPathLocationIDEProperty property, Void param) {
+						String ver = property.getVersion();
+						if (ver != null) {
+							versionText.setText(ver);
+						}
+						return null;
+					}
+				}, null);
+			}
+
+			setControl(composite);
+		}
+
+		private boolean isPageValid() {
+			String verstr = versionText.getText();
+			if (ObjectUtils.isNullOrEmpty(verstr)) {
+				return true;
+			}
+			if (!NestRepositoryClassPathLocationIDEProperty.isValidVersionNumber(verstr)) {
+				return false;
+			}
+			return true;
+		}
+
+		@Override
+		public boolean canFlipToNextPage() {
+			return super.canFlipToNextPage() && isPageValid();
+		}
+
+		@Override
+		public boolean canFinishPage() {
+			return finisher != null && isPageValid();
+		}
+
+		@Override
+		public boolean performFinish() {
+			ClassPathLocationIDEProperty cplocation = getClassPathLocation();
+			if (cplocation == null) {
+				return false;
+			}
+			finisher.accept(this, cplocation);
+			return true;
+		}
+
+		@Override
+		public ClassPathLocationIDEProperty getClassPathLocation() {
+			String verstr = versionText.getText();
+			if (ObjectUtils.isNullOrEmpty(verstr)) {
+				return new NestRepositoryClassPathLocationIDEProperty();
+			}
+			if (NestRepositoryClassPathLocationIDEProperty.isValidVersionNumber(verstr)) {
+				return new NestRepositoryClassPathLocationIDEProperty(verstr);
+			}
+			return null;
+		}
+
+		@Override
+		public IWizardPage getNextPage() {
+			ClassPathLocationIDEProperty cplocation = getClassPathLocation();
+			if (cplocation == null) {
+				return null;
+			}
+			return getClassPathContinuation(cplocation);
+		}
+
+		@Override
+		public ClassPathServiceEnumeratorIDEProperty inferServiceProperty() {
+			return new NestRepositoryFactoryServiceEnumeratorIDEProperty();
+		}
+	}
+
 	public class FileChoosingWizardPage extends SakerWizardPage
 			implements ClassPathLocationWizardResult, FinishablePage {
 
@@ -332,8 +470,6 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 			layout.marginRight = 5;
 			composite.setLayout(layout);
 
-			GridData labelgd = new GridData();
-
 			Label filesystemendpointlabel = new Label(composite, SWT.NONE);
 			filesystemendpointlabel.setText("File system endpoint:");
 			filesystemendpointlabel.setLayoutData(GridDataFactory.swtDefaults().hint(120, SWT.DEFAULT).create());
@@ -364,6 +500,8 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 					itemEndpointNames.add(connname);
 				}
 			}
+
+			GridData labelgd = new GridData();
 
 			Label archivepathlabel = new Label(composite, SWT.NONE);
 			archivepathlabel.setText("Archive path:");
