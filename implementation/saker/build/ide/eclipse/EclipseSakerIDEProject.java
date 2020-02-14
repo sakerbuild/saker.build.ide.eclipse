@@ -130,6 +130,7 @@ import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 import saker.build.ide.support.properties.HttpUrlJarClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.JarClassPathLocationIDEProperty;
+import saker.build.ide.support.properties.MountPathIDEProperty;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.PropertiesValidationException;
 import saker.build.ide.support.properties.ProviderMountIDEProperty;
@@ -1589,6 +1590,7 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 					DaemonConnectionIDEProperty property = (DaemonConnectionIDEProperty) err.relatedSubject;
 					return "Duplicate daemon connection name: " + property.getConnectionName();
 				}
+
 				case SakerIDEProject.NS_PROVIDER_MOUNT + SakerIDEProject.C_ROOT + SakerIDEProject.E_MISSING: {
 					return "Missing mount root.";
 				}
@@ -1618,6 +1620,26 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 					ProviderMountIDEProperty property = (ProviderMountIDEProperty) err.relatedSubject;
 					return "Invalid mounted path format: " + property.getMountPath();
 				}
+
+				case SakerIDEProject.NS_BUILD_TRACE_OUT + SakerIDEProject.C_CLIENT + SakerIDEProject.E_MISSING: {
+					return "Build trace output: Missing file system endpoint.";
+				}
+				case SakerIDEProject.NS_BUILD_TRACE_OUT + SakerIDEProject.C_PATH + SakerIDEProject.E_MISSING: {
+					return "Build trace output: Missing path.";
+				}
+				case SakerIDEProject.NS_BUILD_TRACE_OUT + SakerIDEProject.C_PATH + SakerIDEProject.E_RELATIVE: {
+					MountPathIDEProperty property = (MountPathIDEProperty) err.relatedSubject;
+					return "Build trace output: Output path must be absolute: " + property.getMountPath();
+				}
+				case SakerIDEProject.NS_BUILD_TRACE_OUT + SakerIDEProject.C_PATH + SakerIDEProject.E_INVALID_ROOT: {
+					MountPathIDEProperty property = (MountPathIDEProperty) err.relatedSubject;
+					return "Build trace output: Output path root is invalid: " + property.getMountPath();
+				}
+				case SakerIDEProject.NS_BUILD_TRACE_OUT + SakerIDEProject.C_PATH + SakerIDEProject.E_FORMAT: {
+					MountPathIDEProperty property = (MountPathIDEProperty) err.relatedSubject;
+					return "Build trace output: Invalid path format: " + property.getMountPath();
+				}
+
 				case SakerIDEProject.NS_EXECUTION_DAEMON_NAME + SakerIDEProject.E_MISSING_DAEMON: {
 					return "Daemon connection not found for execution daemon name: " + err.relatedSubject;
 				}
@@ -1860,6 +1882,8 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				pageid = PathConfigurationProjectPropertyPage.ID;
 			} else if (type.startsWith(SakerIDEProject.NS_SCRIPT_MODELLING_EXCLUSION)) {
 				pageid = ScriptConfigurationProjectPropertyPage.ID;
+			} else if (type.startsWith(SakerIDEProject.NS_PROVIDER_MOUNT)) {
+				pageid = SakerBuildProjectPropertyPage.ID;
 			} else {
 				pageid = SakerBuildProjectPropertyPage.ID;
 			}

@@ -58,6 +58,7 @@ import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
+import saker.build.ide.support.properties.MountPathIDEProperty;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.ProviderMountIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
@@ -220,8 +221,8 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 						conn.getMountPath());
 				dialog.create();
 				if (dialog.open() == Window.OK) {
-					mounts.set(selidx, new ProviderMountIDEProperty(dialog.getMountRoot(), dialog.getConnectionName(),
-							dialog.getMountPath()));
+					mounts.set(selidx, new ProviderMountIDEProperty(dialog.getMountRoot(),
+							MountPathIDEProperty.create(dialog.getConnectionName(), dialog.getMountPath())));
 					populateControls();
 					validateProperties();
 				}
@@ -233,8 +234,8 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 			MountDialog dialog = new MountDialog(getShell(), "", "", "");
 			dialog.create();
 			if (dialog.open() == Window.OK) {
-				mounts.add(new ProviderMountIDEProperty(dialog.getMountRoot(), dialog.getConnectionName(),
-						dialog.getMountPath()));
+				mounts.add(new ProviderMountIDEProperty(dialog.getMountRoot(),
+						MountPathIDEProperty.create(dialog.getConnectionName(), dialog.getMountPath())));
 				populateControls();
 				validateProperties();
 			}
@@ -268,7 +269,7 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 		wdlabel.setText(labeltext);
 	}
 
-	private static DaemonConnectionIDEProperty getConnectionPropertyWithName(
+	public static DaemonConnectionIDEProperty getConnectionPropertyWithName(
 			Set<? extends DaemonConnectionIDEProperty> connections, String name) {
 		if (ObjectUtils.isNullOrEmpty(connections)) {
 			return null;
@@ -299,25 +300,31 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 				if (clientname == null) {
 					clientname = "";
 				}
-				if (SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE.equals(clientname)) {
-					clientnamecol = LABEL_PROJECT_RELATIVE;
-				} else if (SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM.equals(clientname)) {
-					clientnamecol = LABEL_LOCAL_FILESYSTEM;
-				} else {
-					clientnamecol = clientname;
-					DaemonConnectionIDEProperty connectionprop = getConnectionPropertyWithName(connections, clientname);
-					if (connectionprop != null) {
-						clientnamecol += " @";
-						clientnamecol += connectionprop.getNetAddress();
-					} else {
-						clientnamecol += " @<not-found>";
-					}
-				}
+				clientnamecol = getReadableClientName(connections, clientname);
 				item.setText(1, ObjectUtils.nullDefault(clientnamecol, ""));
 				item.setText(2, ObjectUtils.nullDefault(mountprop.getMountPath(), ""));
 			}
 		}
 		table.getParent().requestLayout();
+	}
+
+	public static String getReadableClientName(Set<? extends DaemonConnectionIDEProperty> connections,
+			String clientname) {
+		if (SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE.equals(clientname)) {
+			return LABEL_PROJECT_RELATIVE;
+		}
+		if (SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM.equals(clientname)) {
+			return LABEL_LOCAL_FILESYSTEM;
+		}
+		String result = clientname;
+		DaemonConnectionIDEProperty connectionprop = getConnectionPropertyWithName(connections, clientname);
+		if (connectionprop != null) {
+			result += " @";
+			result += connectionprop.getNetAddress();
+		} else {
+			result += " @<not-found>";
+		}
+		return result;
 	}
 
 	private boolean isRootMounted(String root) {
@@ -465,8 +472,8 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 		return true;
 	}
 
-	private static final int MOUNT_DIALOG_PROJECT_CONNECTION_NAME_INDEX = 0;
-	private static final int MOUNT_DIALOG_LOCAL_CONNECTION_NAME_INDEX = 1;
+	public static final int MOUNT_DIALOG_PROJECT_CONNECTION_NAME_INDEX = 0;
+	public static final int MOUNT_DIALOG_LOCAL_CONNECTION_NAME_INDEX = 1;
 
 	private class MountDialog extends TitleAreaDialog {
 
@@ -645,9 +652,9 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 
 			itemEndpointNames = new ArrayList<>();
 			List<String> items = new ArrayList<>();
-			items.add(LABEL_PROJECT_RELATIVE);
+			items.add(PathConfigurationProjectPropertyPage.LABEL_PROJECT_RELATIVE);
 			itemEndpointNames.add(SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE);
-			items.add(LABEL_LOCAL_FILESYSTEM);
+			items.add(PathConfigurationProjectPropertyPage.LABEL_LOCAL_FILESYSTEM);
 			itemEndpointNames.add(SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM);
 			Set<? extends DaemonConnectionIDEProperty> connectionsprop = ideProject.getIDEProjectProperties()
 					.getConnections();
