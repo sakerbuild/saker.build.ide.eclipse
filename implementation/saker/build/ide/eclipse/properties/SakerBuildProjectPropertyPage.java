@@ -35,6 +35,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
@@ -62,9 +63,11 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 
 	private boolean requireIdeConfig;
 	private MountPathIDEProperty buildTraceOutput;
+	private boolean embedBuildTraceArtifacts;
 
 	private Button requireIdeConfigButton;
 	private Label buildTraceOutValueLabel;
+	private Button embedBuildTraceArtifactsButton;
 
 	public SakerBuildProjectPropertyPage() {
 		super();
@@ -78,6 +81,7 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 			IDEProjectProperties ideprops = ideProject.getIDEProjectProperties();
 			requireIdeConfig = ideprops.isRequireTaskIDEConfiguration();
 			buildTraceOutput = ideprops.getBuildTraceOutput();
+			embedBuildTraceArtifacts = ideprops.isBuildTraceEmbedArtifacts();
 		}
 	}
 
@@ -101,7 +105,13 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 		requireIdeConfigButton = new Button(composite, SWT.CHECK);
 		requireIdeConfigButton.setText("Require IDE configuration from build tasks.");
 
-		Composite btcomposite = new Composite(composite, SWT.NONE);
+		Group buildtracegroup = new Group(composite, SWT.NONE);
+		buildtracegroup.setLayout(new GridLayout(1, false));
+		buildtracegroup.setLayoutData(
+				GridDataFactory.swtDefaults().grab(true, false).align(GridData.FILL, GridData.CENTER).create());
+		buildtracegroup.setText("Build trace");
+
+		Composite btcomposite = new Composite(buildtracegroup, SWT.NONE);
 		GridLayout buildtracelayout = new GridLayout(3, false);
 		btcomposite.setLayout(buildtracelayout);
 
@@ -130,6 +140,9 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 			}
 		}));
 
+		embedBuildTraceArtifactsButton = new Button(buildtracegroup, SWT.CHECK);
+		embedBuildTraceArtifactsButton.setText("Embed output artifacts.");
+
 		populateControls();
 
 		//TODO perform property validation
@@ -157,6 +170,7 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 
 			buildTraceOutValueLabel.setText(readablecname + " : " + Objects.toString(btmountpath, "<missing>"));
 		}
+		embedBuildTraceArtifactsButton.setSelection(this.embedBuildTraceArtifacts);
 	}
 
 	@Override
@@ -171,8 +185,10 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 	@Override
 	public boolean performOk() {
 		this.requireIdeConfig = requireIdeConfigButton.getSelection();
+		this.embedBuildTraceArtifacts = embedBuildTraceArtifactsButton.getSelection();
 		ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
-				.setRequireTaskIDEConfiguration(this.requireIdeConfig).setBuildTraceOutput(buildTraceOutput).build());
+				.setRequireTaskIDEConfiguration(this.requireIdeConfig).setBuildTraceOutput(buildTraceOutput)
+				.setBuildTraceEmbedArtifacts(embedBuildTraceArtifacts).build());
 		return true;
 	}
 

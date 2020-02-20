@@ -156,11 +156,11 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 		data.verticalAlignment = GridData.FILL;
 		composite.setLayoutData(data);
 
-		Group pathconfigsgrid = new Group(composite, SWT.NONE);
-		pathconfigsgrid.setLayout(new GridLayout(2, false));
-		pathconfigsgrid.setLayoutData(
+		Group pathconfigsgroup = new Group(composite, SWT.NONE);
+		pathconfigsgroup.setLayout(new GridLayout(2, false));
+		pathconfigsgroup.setLayoutData(
 				GridDataFactory.swtDefaults().grab(true, false).align(GridData.FILL, GridData.CENTER).create());
-		pathconfigsgrid.setText("Special paths");
+		pathconfigsgroup.setText("Special paths");
 
 //		Composite workingrow = new Composite(composite, SWT.NONE);
 //		GridData workingrowgriddata = new GridData();
@@ -169,9 +169,9 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 //		workingrow.setLayout(new GridLayout(2, false));
 //		workingrow.setLayoutData(workingrowgriddata);
 
-		workingDirectoryText = createSpecialPathText(pathconfigsgrid, "Working directory:", "Execution path");
-		buildDirectoryText = createSpecialPathText(pathconfigsgrid, "Build directory:", "Execution path");
-		mirrorDirectoryText = createSpecialPathText(pathconfigsgrid, "Mirror directory:",
+		workingDirectoryText = createSpecialPathText(pathconfigsgroup, "Working directory:", "Execution path");
+		buildDirectoryText = createSpecialPathText(pathconfigsgroup, "Build directory:", "Execution path");
+		mirrorDirectoryText = createSpecialPathText(pathconfigsgroup, "Mirror directory:",
 				"Execution daemon local path (empty for default)");
 
 		mountsTable = new Table(composite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION | SWT.BORDER);
