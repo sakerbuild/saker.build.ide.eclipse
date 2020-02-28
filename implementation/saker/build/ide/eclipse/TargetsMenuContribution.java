@@ -25,7 +25,6 @@ import java.util.TreeMap;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IConfigurationElement;
@@ -232,7 +231,6 @@ public class TargetsMenuContribution extends ContributionItem {
 							manager.add(new Action(target) {
 								@Override
 								public void run() {
-									//get the target to build as it could be a remote executable
 									ProjectBuilder.buildAsync(sakereclipseproject, buildfilepath, target);
 								}
 							});
@@ -271,12 +269,7 @@ public class TargetsMenuContribution extends ContributionItem {
 			Action dummy = new Action("Run a build to generate an IDE configuration") {
 				@Override
 				public void run() {
-					try {
-						sakereclipseproject.getProject().build(IncrementalProjectBuilder.FULL_BUILD,
-								ProjectBuilder.BUILDER_ID, null, null);
-					} catch (CoreException e) {
-						sakereclipseproject.displayException(e);
-					}
+					sakereclipseproject.buildWithNewJob();
 				}
 			};
 			ideViewMenu.add(dummy);
