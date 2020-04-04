@@ -61,7 +61,7 @@
 	<echo message="VERSION_DATE: ${VERSION_DATE}" />
 	<echo message="buildDate: ${buildDate}" />
 
-	<target name="init" depends="properties">
+	<target name="init">
 		<condition property="pluginTemp" value="${buildTempFolder}/plugins">
 			<isset property="buildTempFolder" />
 		</condition>
@@ -82,10 +82,6 @@
 				<isfalse value="${p2.publishonerror}" />
 			</and>
 		</condition>
-	</target>
-
-	<target name="properties" if="eclipse.running">
-
 	</target>
 
 	<target name="build.update.jar" depends="init" description="Build the plug-in: ${bundleId} for an update site.">
