@@ -80,7 +80,7 @@
 		<antcall target="gather.bin.parts">
 			<param name="destination.temp.folder" value="${temp.folder}/"/>
 		</antcall>
-		<jar destfile="${plugin.destination}/saker.build.ide.eclipse_0.8.9.202004041005.jar" basedir="${temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" filesetmanifest="merge"/>
+		<jar destfile="${plugin.destination}/saker.build.ide.eclipse.jar" basedir="${temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" filesetmanifest="merge"/>
 		<delete dir="${temp.folder}"/>
 	</target>
 
