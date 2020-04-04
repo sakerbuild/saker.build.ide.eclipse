@@ -11,11 +11,11 @@ pool:
 
 steps:
 - script: |
-	set -e
+    set -e
     echo "##vso[task.setvariable variable=BUILD_VERSION_NUMBER]$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/')"
   condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
 - script: |
-	set -e
+    set -e
     echo "##vso[task.setvariable variable=BUILD_VERSION_NUMBER]$(cat META-INF/MANIFEST.MF | grep Bundle-Version: | sed -r 's/Bundle-Version: (.*)\.qualifier/\1/')"
   condition: not(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
 - script: |
