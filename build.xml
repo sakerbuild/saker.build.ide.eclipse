@@ -56,8 +56,10 @@
 	<property name="bundleJavacSource" value="${javacSource}" />
 	<property name="bundleJavacTarget" value="${javacTarget}" />
 	<property name="bundleBootClasspath" value="${bootclasspath}" />
-	
+
 	<echo message="Full bundleVersion: ${bundleVersion}" />
+	<echo message="VERSION_DATE: ${VERSION_DATE}" />
+	<echo message="buildDate: ${buildDate}" />
 
 	<target name="init" depends="properties">
 		<condition property="pluginTemp" value="${buildTempFolder}/plugins">

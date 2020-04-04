@@ -14,10 +14,12 @@ steps:
     set -e
     echo "##vso[task.setvariable variable=BUILD_VERSION_NUMBER]$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/')"
   condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
+  displayName: 'Set BUILD_VERSION_NUMBER'
 - script: |
     set -e
     echo "##vso[task.setvariable variable=BUILD_VERSION_NUMBER]$(cat META-INF/MANIFEST.MF | grep Bundle-Version: | sed -r 's/Bundle-Version: (.*)\.qualifier/\1/')"
   condition: not(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
+  displayName: 'Set BUILD_VERSION_NUMBER'
 - script: |
     set -e
     curl http://ftp.halifax.rwth-aachen.de/eclipse//technology/epp/downloads/release/2020-03/R/eclipse-rcp-2020-03-R-linux-gtk-x86_64.tar.gz -o eclipse.tar.gz
@@ -25,7 +27,7 @@ steps:
   displayName: 'Download Eclipse'
 - script: |
     set -e
-    eclipse/eclipse -nosplash  -application org.eclipse.ant.core.antRunner -data .. -verbose -buildfile build.xml -DbuildTempFolder=build/temp -DbuildDirectory=build -Dbuild.result.folder=build/res -Dplugin.destination=build/plugin -DbuildDate=$(date '+%Y%m%d%H%m') -DbuildVersionNumber=$BUILD_VERSION_NUMBER build.update.jar
+    eclipse/eclipse -nosplash  -application org.eclipse.ant.core.antRunner -data .. -verbose -buildfile build.xml -DbuildTempFolder=build/temp -DbuildDirectory=build -Dbuild.result.folder=build/res -Dplugin.destination=build/plugin -DbuildVersionNumber=$BUILD_VERSION_NUMBER build.update.jar
   displayName: 'Build update jar'
 - task: PublishBuildArtifacts@1
   displayName: 'Publish plugin JAR'
