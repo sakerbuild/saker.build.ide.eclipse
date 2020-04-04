@@ -56,6 +56,7 @@ import saker.build.ide.eclipse.EclipseSakerIDEPlugin;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SakerIDEProject;
+import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.MountPathIDEProperty;
@@ -270,16 +271,8 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 	}
 
 	public static DaemonConnectionIDEProperty getConnectionPropertyWithName(
-			Set<? extends DaemonConnectionIDEProperty> connections, String name) {
-		if (ObjectUtils.isNullOrEmpty(connections)) {
-			return null;
-		}
-		for (DaemonConnectionIDEProperty prop : connections) {
-			if (Objects.equals(prop.getConnectionName(), name)) {
-				return prop;
-			}
-		}
-		return null;
+			Iterable<? extends DaemonConnectionIDEProperty> connections, String name) {
+		return SakerIDESupportUtils.getConnectionPropertyWithName(connections, name);
 	}
 
 	private void populateControls() {
@@ -701,7 +694,7 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 			this.mountRoot = ObjectUtils.nullDefault(EclipseSakerIDEPlugin.tryNormalizePathRoot(mountrootstr),
 					mountrootstr);
 			//convert to path, and assign its string representation in order to normalize the path
-			this.mountPath = Objects.toString(EclipseSakerIDEPlugin.tryParsePath(mountpathstr), mountpathstr);
+			this.mountPath = Objects.toString(SakerIDESupportUtils.tryParsePath(mountpathstr), mountpathstr);
 			int connectionidx = connectionCombo.getSelectionIndex();
 			switch (connectionidx) {
 				case MOUNT_DIALOG_PROJECT_CONNECTION_NAME_INDEX: {

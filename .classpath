@@ -4,7 +4,7 @@
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" output="impl" path="implementation"/>
-	<classpathentry kind="lib" path="saker.build-ide.jar"/>
-	<classpathentry kind="lib" path="saker.build.jar" sourcepath="/build-system"/>
+	<classpathentry kind="lib" path="saker.build-ide.jar" sourcepath="/saker.build"/>
+	<classpathentry kind="lib" path="saker.build.jar" sourcepath="/saker.build"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

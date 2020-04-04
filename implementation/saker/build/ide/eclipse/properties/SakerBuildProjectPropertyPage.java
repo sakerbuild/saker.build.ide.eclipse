@@ -43,10 +43,10 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.dialogs.PropertyPage;
 
 import saker.build.file.path.SakerPath;
-import saker.build.ide.eclipse.EclipseSakerIDEPlugin;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SakerIDEProject;
+import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.MountPathIDEProperty;
@@ -103,7 +103,7 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 		addLabelWithText(composite, "Saker.build project settings are available on the sub-pages.");
 
 		requireIdeConfigButton = new Button(composite, SWT.CHECK);
-		requireIdeConfigButton.setText("Require IDE configuration from build tasks.");
+		requireIdeConfigButton.setText("Require IDE configuration from build tasks");
 
 		Group buildtracegroup = new Group(composite, SWT.NONE);
 		buildtracegroup.setLayout(new GridLayout(1, false));
@@ -141,7 +141,7 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 		}));
 
 		embedBuildTraceArtifactsButton = new Button(buildtracegroup, SWT.CHECK);
-		embedBuildTraceArtifactsButton.setText("Embed output artifacts.");
+		embedBuildTraceArtifactsButton.setText("Embed output artifacts");
 
 		populateControls();
 
@@ -400,7 +400,7 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 		protected void okPressed() {
 			String mountpathstr = mountPathText.getText();
 			//convert to path, and assign its string representation in order to normalize the path
-			this.mountPath = Objects.toString(EclipseSakerIDEPlugin.tryParsePath(mountpathstr), mountpathstr);
+			this.mountPath = Objects.toString(SakerIDESupportUtils.tryParsePath(mountpathstr), mountpathstr);
 			int connectionidx = connectionCombo.getSelectionIndex();
 			switch (connectionidx) {
 				case PathConfigurationProjectPropertyPage.MOUNT_DIALOG_PROJECT_CONNECTION_NAME_INDEX: {

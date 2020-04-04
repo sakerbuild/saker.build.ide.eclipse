@@ -270,36 +270,6 @@
     </page>
     <page
           category="saker.build.ide.eclipse.properties.sakerBuildProjectPropertyPage"
-          class="saker.build.ide.eclipse.properties.RepositoriesProjectPropertyPageExtensionFactory"
-          id="saker.build.ide.eclipse.properties.repositoriesProjectPropertyPage"
-          name="Task Repositories">
-       <enabledWhen>
-          <adapt
-                type="org.eclipse.core.resources.IProject">
-             <test
-                   property="org.eclipse.core.resources.projectNature"
-                   value="saker.build.ide.eclipse.project.nature">
-             </test>
-          </adapt>
-       </enabledWhen>
-    </page>
-    <page
-          category="saker.build.ide.eclipse.properties.sakerBuildProjectPropertyPage"
-          class="saker.build.ide.eclipse.properties.UserParametersProjectPropertyPageExtensionFactory"
-          id="saker.build.ide.eclipse.properties.userParametersProjectPropertyPage"
-          name="User parameters">
-       <enabledWhen>
-          <adapt
-                type="org.eclipse.core.resources.IProject">
-             <test
-                   property="org.eclipse.core.resources.projectNature"
-                   value="saker.build.ide.eclipse.project.nature">
-             </test>
-          </adapt>
-       </enabledWhen>
-    </page>
-    <page
-          category="saker.build.ide.eclipse.properties.sakerBuildProjectPropertyPage"
           class="saker.build.ide.eclipse.properties.DaemonConnectionsProjectPropertyPageExtensionFactory"
           id="saker.build.ide.eclipse.properties.daemonConnectionsProjectPropertyPage"
           name="Daemon connections">
@@ -333,6 +303,36 @@
           class="saker.build.ide.eclipse.properties.ScriptConfigurationProjectPropertyPageExtensionFactory"
           id="saker.build.ide.eclipse.properties.scriptConfigurationProjectPropertyPage"
           name="Script configuration">
+       <enabledWhen>
+          <adapt
+                type="org.eclipse.core.resources.IProject">
+             <test
+                   property="org.eclipse.core.resources.projectNature"
+                   value="saker.build.ide.eclipse.project.nature">
+             </test>
+          </adapt>
+       </enabledWhen>
+    </page>
+    <page
+          category="saker.build.ide.eclipse.properties.sakerBuildProjectPropertyPage"
+          class="saker.build.ide.eclipse.properties.RepositoriesProjectPropertyPageExtensionFactory"
+          id="saker.build.ide.eclipse.properties.repositoriesProjectPropertyPage"
+          name="Task Repositories">
+       <enabledWhen>
+          <adapt
+                type="org.eclipse.core.resources.IProject">
+             <test
+                   property="org.eclipse.core.resources.projectNature"
+                   value="saker.build.ide.eclipse.project.nature">
+             </test>
+          </adapt>
+       </enabledWhen>
+    </page>
+    <page
+          category="saker.build.ide.eclipse.properties.sakerBuildProjectPropertyPage"
+          class="saker.build.ide.eclipse.properties.UserParametersProjectPropertyPageExtensionFactory"
+          id="saker.build.ide.eclipse.properties.userParametersProjectPropertyPage"
+          name="User parameters">
        <enabledWhen>
           <adapt
                 type="org.eclipse.core.resources.IProject">

@@ -219,7 +219,7 @@ public abstract class ScriptConfigAdditionWizard extends SakerWizard {
 
 	protected abstract void finish(ScriptConfigurationIDEProperty property);
 
-	private class ScriptConfigWizardPage extends SakerWizardPage implements FinishablePage {
+	private class ScriptConfigWizardPage extends EclipseSakerWizardPage implements FinishablePage {
 		private Text wildcardText;
 		private StringMapTableHandler tableHandler;
 

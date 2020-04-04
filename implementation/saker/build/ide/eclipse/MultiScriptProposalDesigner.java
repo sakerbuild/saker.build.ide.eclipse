@@ -20,7 +20,7 @@ import java.util.List;
 import saker.build.ide.eclipse.extension.script.proposal.IScriptProposalDesigner;
 import saker.build.ide.eclipse.extension.script.proposal.IScriptProposalsRoot;
 
-public class MultiScriptProposalDesigner implements IScriptProposalDesigner {
+public final class MultiScriptProposalDesigner implements IScriptProposalDesigner {
 	private final List<IScriptProposalDesigner> designers;
 
 	public MultiScriptProposalDesigner(List<IScriptProposalDesigner> designers) {

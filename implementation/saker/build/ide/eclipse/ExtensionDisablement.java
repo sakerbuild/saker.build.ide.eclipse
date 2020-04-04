@@ -46,6 +46,10 @@ public class ExtensionDisablement {
 	}
 
 	public static boolean isDisabled(Iterable<? extends ExtensionDisablement> disablements, IExtension extension) {
+		if (extension.getUniqueIdentifier() == null) {
+			//generally disable all extensions which doesn't have an unique identifier
+			return true;
+		}
 		for (ExtensionDisablement disablement : disablements) {
 			if (disablement.isDisabled(extension)) {
 				return true;

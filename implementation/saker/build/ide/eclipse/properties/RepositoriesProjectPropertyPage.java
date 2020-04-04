@@ -57,21 +57,13 @@ import org.eclipse.ui.dialogs.PropertyPage;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SakerIDEProject;
-import saker.build.ide.support.properties.BuiltinScriptingLanguageClassPathLocationIDEProperty;
-import saker.build.ide.support.properties.BuiltinScriptingLanguageServiceEnumeratorIDEProperty;
+import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.ClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.ClassPathServiceEnumeratorIDEProperty;
-import saker.build.ide.support.properties.HttpUrlJarClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
-import saker.build.ide.support.properties.JarClassPathLocationIDEProperty;
-import saker.build.ide.support.properties.NamedClassClassPathServiceEnumeratorIDEProperty;
-import saker.build.ide.support.properties.NestRepositoryClassPathLocationIDEProperty;
-import saker.build.ide.support.properties.NestRepositoryFactoryServiceEnumeratorIDEProperty;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.RepositoryIDEProperty;
-import saker.build.ide.support.properties.ServiceLoaderClassPathEnumeratorIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
-import saker.build.runtime.params.NestRepositoryClassPathLocation;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class RepositoriesProjectPropertyPage extends PropertyPage {
@@ -161,8 +153,8 @@ public class RepositoriesProjectPropertyPage extends PropertyPage {
 				TreePropertyItem<RepositoryIDEProperty> property = (TreePropertyItem<RepositoryIDEProperty>) element;
 
 				StyledString styledString = new StyledString();
-				styledString.append(property.property.getClassPathLocation()
-						.accept(ClassPathLocationToStringVisitor.INSTANCE, null));
+				styledString.append(ObjectUtils.nullDefault(
+						SakerIDESupportUtils.classPathLocationToLabel(property.property.getClassPathLocation()), ""));
 				String id = property.property.getRepositoryIdentifier();
 				if (!ObjectUtils.isNullOrEmpty(id)) {
 					styledString.append(" @" + id, StyledString.QUALIFIER_STYLER);
@@ -209,7 +201,7 @@ public class RepositoriesProjectPropertyPage extends PropertyPage {
 			if (cploc == null) {
 				return "";
 			}
-			return cploc.accept(ClassPathLocationToStringVisitor.INSTANCE, null);
+			return SakerIDESupportUtils.classPathLocationToLabel(cploc);
 		}
 
 		@Override
@@ -279,7 +271,7 @@ public class RepositoriesProjectPropertyPage extends PropertyPage {
 			if (serviceenumerator == null) {
 				return "";
 			}
-			return serviceenumerator.accept(ClassPathServiceEnumeratorToStringVisitor.INSTANCE, null);
+			return SakerIDESupportUtils.serviceEnumeratorToLabel(serviceenumerator);
 		}
 
 		@Override
@@ -288,7 +280,7 @@ public class RepositoriesProjectPropertyPage extends PropertyPage {
 			if (serviceenumerator == null) {
 				return "Class";
 			}
-			return serviceenumerator.accept(ClassPathServiceEnumeratorTitleVisitor.INSTANCE, null);
+			return SakerIDESupportUtils.serviceEnumeratorToTitleLabel(serviceenumerator);
 		}
 
 		@Override
@@ -461,7 +453,7 @@ public class RepositoriesProjectPropertyPage extends PropertyPage {
 				tagidentifier = repoid;
 			} else {
 				if (classpathlocation != null) {
-					tagidentifier = classpathlocation.accept(ClassPathLocationToStringVisitor.INSTANCE, null);
+					tagidentifier = SakerIDESupportUtils.classPathLocationToLabel(classpathlocation);
 				} else {
 					//XXX can we display something here? service enumerator doesn't really make sense
 					tagidentifier = "";
@@ -530,91 +522,4 @@ public class RepositoriesProjectPropertyPage extends PropertyPage {
 				.setRepositories(repos).build());
 		return true;
 	}
-
-	public static class ClassPathLocationToStringVisitor implements ClassPathLocationIDEProperty.Visitor<String, Void> {
-		public static final ClassPathLocationToStringVisitor INSTANCE = new ClassPathLocationToStringVisitor();
-
-		@Override
-		public String visit(JarClassPathLocationIDEProperty property, Void param) {
-			String connname = property.getConnectionName();
-			if (!ObjectUtils.isNullOrEmpty(connname)) {
-				if (SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM.equals(connname)
-						|| SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE.equals(connname)) {
-					return ObjectUtils.nullDefault(property.getJarPath(), "");
-				}
-				return connname + ":/" + property.getJarPath();
-			}
-			return ObjectUtils.nullDefault(property.getJarPath(), "");
-		}
-
-		@Override
-		public String visit(HttpUrlJarClassPathLocationIDEProperty property, Void param) {
-			return ObjectUtils.nullDefault(property.getUrl(), "");
-		}
-
-		@Override
-		public String visit(BuiltinScriptingLanguageClassPathLocationIDEProperty property, Void param) {
-			return "SakerScript";
-		}
-
-		@Override
-		public String visit(NestRepositoryClassPathLocationIDEProperty property, Void param) {
-			String ver = property.getVersion();
-			if (ver != null) {
-				return "Nest repository v" + ver;
-			}
-			return "Nest repository v" + NestRepositoryClassPathLocation.DEFAULT_VERSION + " (default)";
-		}
-	}
-
-	public static class ClassPathServiceEnumeratorToStringVisitor
-			implements ClassPathServiceEnumeratorIDEProperty.Visitor<String, Void> {
-		public static final ClassPathServiceEnumeratorToStringVisitor INSTANCE = new ClassPathServiceEnumeratorToStringVisitor();
-
-		@Override
-		public String visit(ServiceLoaderClassPathEnumeratorIDEProperty property, Void param) {
-			return property.getServiceClass();
-		}
-
-		@Override
-		public String visit(NamedClassClassPathServiceEnumeratorIDEProperty property, Void param) {
-			return property.getClassName();
-		}
-
-		@Override
-		public String visit(BuiltinScriptingLanguageServiceEnumeratorIDEProperty property, Void param) {
-			return "SakerScript";
-		}
-
-		@Override
-		public String visit(NestRepositoryFactoryServiceEnumeratorIDEProperty property, Void param) {
-			return "Nest repository";
-		}
-	}
-
-	public static class ClassPathServiceEnumeratorTitleVisitor
-			implements ClassPathServiceEnumeratorIDEProperty.Visitor<String, Void> {
-		public static final ClassPathServiceEnumeratorTitleVisitor INSTANCE = new ClassPathServiceEnumeratorTitleVisitor();
-
-		@Override
-		public String visit(ServiceLoaderClassPathEnumeratorIDEProperty property, Void param) {
-			return "Service";
-		}
-
-		@Override
-		public String visit(NamedClassClassPathServiceEnumeratorIDEProperty property, Void param) {
-			return "Class name";
-		}
-
-		@Override
-		public String visit(BuiltinScriptingLanguageServiceEnumeratorIDEProperty property, Void param) {
-			return "Service relation";
-		}
-
-		@Override
-		public String visit(NestRepositoryFactoryServiceEnumeratorIDEProperty property, Void param) {
-			return "Service relation";
-		}
-	}
-
 }

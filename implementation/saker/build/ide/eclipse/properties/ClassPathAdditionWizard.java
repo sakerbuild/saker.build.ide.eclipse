@@ -54,9 +54,9 @@ import org.eclipse.ui.model.WorkbenchLabelProvider;
 import saker.build.file.path.SakerPath;
 import saker.build.file.provider.LocalFileProvider;
 import saker.build.ide.eclipse.Activator;
-import saker.build.ide.eclipse.EclipseSakerIDEPlugin;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.support.SakerIDEProject;
+import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.BuiltinScriptingLanguageClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.BuiltinScriptingLanguageServiceEnumeratorIDEProperty;
 import saker.build.ide.support.properties.ClassPathLocationIDEProperty;
@@ -138,7 +138,7 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 		wizard.addPage(classPathNetworkArchiveChooser);
 	}
 
-	public class ClassPathTypeChooserWizardPage extends SakerWizardPage
+	public class ClassPathTypeChooserWizardPage extends EclipseSakerWizardPage
 			implements ClassPathLocationWizardResult, FinishablePage {
 		private static final String TYPE_JAVA_ARCHIVE = "Java Archive";
 		private static final String TYPE_NETWORK_ARCHIVE_HTTP = "Network archive (HTTP)";
@@ -305,7 +305,7 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 		}
 	}
 
-	public class NestRepositoryVersionChoosingWizardPage extends SakerWizardPage
+	public class NestRepositoryVersionChoosingWizardPage extends EclipseSakerWizardPage
 			implements ClassPathLocationWizardResult, FinishablePage {
 		private Text versionText;
 
@@ -439,7 +439,7 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 		}
 	}
 
-	public class FileChoosingWizardPage extends SakerWizardPage
+	public class FileChoosingWizardPage extends EclipseSakerWizardPage
 			implements ClassPathLocationWizardResult, FinishablePage {
 
 		private Text pathText;
@@ -721,7 +721,7 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 		@Override
 		public ClassPathLocationIDEProperty getClassPathLocation() {
 			String clientname = getPathEndpointSelectionConnectionName();
-			SakerPath jarpath = EclipseSakerIDEPlugin.tryParsePath(pathText.getText());
+			SakerPath jarpath = SakerIDESupportUtils.tryParsePath(pathText.getText());
 			if (jarpath == null) {
 				return null;
 			}
@@ -778,7 +778,7 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 
 	}
 
-	public class NetworkArchiveChoosingWizardPage extends SakerWizardPage
+	public class NetworkArchiveChoosingWizardPage extends EclipseSakerWizardPage
 			implements ClassPathLocationWizardResult, FinishablePage {
 		private Text urlText;
 

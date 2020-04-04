@@ -97,7 +97,7 @@ public class ServiceLocationAdditionWizard implements PropertyWizardPart<ClassPa
 		return continuation.getWizardContinuation(property);
 	}
 
-	public class ServiceLocationWizardPage extends SakerWizardPage
+	public class ServiceLocationWizardPage extends EclipseSakerWizardPage
 			implements ServiceLocationWizardResult, FinishablePage {
 		private Button serviceLoaderButton;
 		private Button classNameButton;

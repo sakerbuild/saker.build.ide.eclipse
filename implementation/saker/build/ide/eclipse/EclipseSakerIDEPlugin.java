@@ -41,6 +41,7 @@ import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
@@ -150,8 +151,8 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		try {
 			sakerPlugin.initialize(sakerJarPath, plugindirectory);
 			sakerPlugin.start(sakerPlugin.createDaemonLaunchParameters(
-					getIDEProjectPropertiesWithEnvironmentParameterContributions(sakerPlugin.getIDEPluginProperties(),
-							null)));
+					getIDEPluginPropertiesWithEnvironmentParameterContributions(sakerPlugin.getIDEPluginProperties(),
+							new NullProgressMonitor())));
 		} catch (IOException e) {
 			displayException(e);
 		}
@@ -183,8 +184,8 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		new Job("Updating environment parameters") {
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
-				sakerPlugin.updateForPluginProperties(getIDEProjectPropertiesWithEnvironmentParameterContributions(
-						getIDEPluginProperties(), monitor));
+				sakerPlugin.updateForPluginProperties(
+						getIDEPluginPropertiesWithEnvironmentParameterContributions(getIDEPluginProperties(), monitor));
 				return Status.OK_STATUS;
 			}
 		}.schedule();
@@ -220,7 +221,7 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
 				sakerPlugin.updateForPluginProperties(
-						getIDEProjectPropertiesWithEnvironmentParameterContributions(properties, monitor));
+						getIDEPluginPropertiesWithEnvironmentParameterContributions(properties, monitor));
 				return Status.OK_STATUS;
 			}
 		}.schedule();
@@ -233,7 +234,7 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 				try {
 					synchronized (configurationChangeLock) {
 						DaemonLaunchParameters launchparams = sakerPlugin.createDaemonLaunchParameters(
-								getIDEProjectPropertiesWithEnvironmentParameterContributions(
+								getIDEPluginPropertiesWithEnvironmentParameterContributions(
 										sakerPlugin.getIDEPluginProperties(), monitor));
 						if (monitor.isCanceled()) {
 							return Status.CANCEL_STATUS;
@@ -250,21 +251,10 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		}.schedule();
 	}
 
-	public static Set<ExtensionDisablement> getExtensionDisablements(
-			Iterable<? extends ContributedExtensionConfiguration<?>> contributedextensions) {
-		if (ObjectUtils.isNullOrEmpty(contributedextensions)) {
-			return Collections.emptySet();
-		}
-		HashSet<ExtensionDisablement> result = new HashSet<>();
-		for (ContributedExtensionConfiguration<?> ext : contributedextensions) {
-			if (!ext.isEnabled()) {
-				result.add(new ExtensionDisablement(ext.getConfigurationElement().getDeclaringExtension()));
-			}
-		}
-		return result;
-	}
-
 	public EclipseSakerIDEProject getOrCreateProject(IProject project) {
+		if (project == null) {
+			return null;
+		}
 		synchronized (projectsLock) {
 			if (closed) {
 				throw new IllegalStateException("closed");
@@ -395,6 +385,7 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 				}
 			}
 		}
+		exc = IOUtils.closeExc(exc, sakerPlugin);
 		IOUtils.throwExc(exc);
 	}
 
@@ -542,17 +533,6 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		return new MultiScriptOutlineDesigner(designers);
 	}
 
-	public static SakerPath tryParsePath(String path) {
-		if (path == null) {
-			return null;
-		}
-		try {
-			return SakerPath.valueOf(path);
-		} catch (IllegalArgumentException e) {
-			return null;
-		}
-	}
-
 	public static String tryNormalizePathRoot(String root) {
 		try {
 			return SakerPath.normalizeRoot(root);
@@ -601,6 +581,20 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		}
 	}
 
+	public static Set<ExtensionDisablement> getExtensionDisablements(
+			Iterable<? extends ContributedExtensionConfiguration<?>> contributedextensions) {
+		if (ObjectUtils.isNullOrEmpty(contributedextensions)) {
+			return Collections.emptySet();
+		}
+		HashSet<ExtensionDisablement> result = new HashSet<>();
+		for (ContributedExtensionConfiguration<?> ext : contributedextensions) {
+			if (!ext.isEnabled()) {
+				result.add(new ExtensionDisablement(ext.getConfigurationElement().getDeclaringExtension()));
+			}
+		}
+		return result;
+	}
+
 	private void writePluginConfigurationFile(Iterable<? extends ExtensionDisablement> disablements)
 			throws IOException {
 		try (OutputStream os = Files.newOutputStream(pluginConfigurationFilePath)) {
@@ -612,10 +606,13 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		}
 	}
 
-	private IDEPluginProperties getIDEProjectPropertiesWithEnvironmentParameterContributions(
+	private IDEPluginProperties getIDEPluginPropertiesWithEnvironmentParameterContributions(
 			IDEPluginProperties properties, IProgressMonitor monitor) {
 		if (environmentParameterContributors.isEmpty()) {
 			return properties;
+		}
+		if (monitor == null) {
+			monitor = new NullProgressMonitor();
 		}
 		SimpleIDEPluginProperties.Builder builder = SimpleIDEPluginProperties.builder(properties);
 		Map<String, String> propertiesuserparams = SakerIDEPlugin.entrySetToMap(properties.getUserParameters());

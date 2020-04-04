@@ -48,6 +48,9 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner {
 		System.out.println("SakerScriptProposalDesigner.process()");
 		boolean darktheme = BuildFileEditor.isCurrentThemeDark();
 		for (IScriptProposalEntry proposal : proposalsroot.getProposals()) {
+			if (proposal == null) {
+				continue;
+			}
 			if (!PROPOSAL_SCHEMA_IDENTIFIER.equals(proposal.getSchemaIdentifier())) {
 				continue;
 			}
@@ -61,7 +64,6 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner {
 			return;
 		}
 		switch (type) {
-			// TODO Auto-generated method stub
 			case PROPOSAL_META_DATA_TYPE_VARIABLE:
 			case PROPOSAL_META_DATA_TYPE_STATIC_VARIABLE:
 			case PROPOSAL_META_DATA_TYPE_GLOBAL_VARIABLE: {

@@ -36,6 +36,10 @@ public interface IScriptOutlineEntry {
 
 	public void setWidgetLabel(StyledString label);
 
+	public void setLabel(String label);
+
+	public void setType(String type);
+
 	public String getSchemaIdentifier();
 
 	public Map<String, String> getSchemaMetaData();

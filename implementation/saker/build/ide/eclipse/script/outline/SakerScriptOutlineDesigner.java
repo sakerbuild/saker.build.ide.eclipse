@@ -120,6 +120,9 @@ public class SakerScriptOutlineDesigner implements IScriptOutlineDesigner {
 	}
 
 	private void processEntry(IScriptOutlineEntry entry, boolean darktheme) {
+		if (entry == null) {
+			return;
+		}
 		String entryschema = entry.getSchemaIdentifier();
 		if (entryschema != null) {
 			switch (entryschema) {

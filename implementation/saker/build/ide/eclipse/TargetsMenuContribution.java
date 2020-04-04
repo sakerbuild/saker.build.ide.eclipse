@@ -62,6 +62,7 @@ import saker.build.file.path.SakerPath;
 import saker.build.ide.configuration.IDEConfiguration;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.scripting.ScriptParsingFailedException;
+import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.function.Functionals;
 
 public class TargetsMenuContribution extends ContributionItem {
@@ -249,42 +250,36 @@ public class TargetsMenuContribution extends ContributionItem {
 		Collection<? extends IDEConfiguration> configurations = sakereclipseproject
 				.getProjectIDEConfigurationCollection().getConfigurations();
 
-		IConfigurationElement[] ideconfigextensionconfigelements = Platform.getExtensionRegistry()
-				.getConfigurationElementsFor(Activator.EXTENSION_POINT_ID_IDE_CONFIGURATION_PARSER);
-		Map<String, Set<String>> idetypetypenames = new TreeMap<>();
-		for (IConfigurationElement configelem : ideconfigextensionconfigelements) {
-			String typename = configelem.getAttribute("type_name");
-			if (typename == null) {
-				continue;
-			}
-			String type = configelem.getAttribute("type");
-			if (type == null) {
-				continue;
-			}
-			idetypetypenames.computeIfAbsent(type, Functionals.treeSetComputer()).add(typename);
-		}
-
-		if (configurations.isEmpty()) {
-			//TODO different message when IDE configurations are turned off.
-			Action dummy = new Action("Run a build to generate an IDE configuration") {
-				@Override
-				public void run() {
-					sakereclipseproject.buildWithNewJob();
+		if (!configurations.isEmpty()) {
+			IConfigurationElement[] ideconfigextensionconfigelements = Platform.getExtensionRegistry()
+					.getConfigurationElementsFor(Activator.EXTENSION_POINT_ID_IDE_CONFIGURATION_PARSER);
+			Map<String, Set<String>> idetypetypenames = new TreeMap<>();
+			for (IConfigurationElement configelem : ideconfigextensionconfigelements) {
+				String typename = configelem.getAttribute("type_name");
+				if (ObjectUtils.isNullOrEmpty(typename)) {
+					continue;
 				}
-			};
-			ideViewMenu.add(dummy);
-		} else {
+				String type = configelem.getAttribute("type");
+				if (ObjectUtils.isNullOrEmpty(type)) {
+					continue;
+				}
+				idetypetypenames.computeIfAbsent(type, Functionals.treeSetComputer()).add(typename);
+			}
+
 			Map<String, MenuManager> idetypemenumanagers = new TreeMap<>();
 			for (IDEConfiguration ideconfig : configurations) {
 				String configtype = ideconfig.getType();
-				if (configtype == null) {
+				if (ObjectUtils.isNullOrEmpty(configtype)) {
+					continue;
+				}
+				String id = ideconfig.getIdentifier();
+				if (ObjectUtils.isNullOrEmpty(id)) {
 					continue;
 				}
 				Set<String> configtypenames = idetypetypenames.get(configtype);
 				if (configtypenames == null) {
 					configtypenames = Collections.singleton("<" + configtype + ">");
 				}
-				String id = ideconfig.getIdentifier();
 				for (String typename : configtypenames) {
 					MenuManager ideconfigmenumanager = idetypemenumanagers.get(typename);
 					if (ideconfigmenumanager == null) {
@@ -311,6 +306,18 @@ public class TargetsMenuContribution extends ContributionItem {
 				ideViewMenu.add(mm);
 			}
 		}
+
+		if (ideViewMenu.isEmpty()) {
+			//TODO different message when IDE configurations are turned off.
+			Action dummy = new Action("Run a build to generate an IDE configuration") {
+				@Override
+				public void run() {
+					sakereclipseproject.buildWithNewJob();
+				}
+			};
+			ideViewMenu.add(dummy);
+		}
+
 		ideViewMenu.fill(menu, -1);
 	}
 

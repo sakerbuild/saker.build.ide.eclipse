@@ -17,7 +17,7 @@ package saker.build.ide.eclipse;
 
 import org.eclipse.core.runtime.IConfigurationElement;
 
-public class ContributedExtensionConfiguration<T> {
+public final class ContributedExtensionConfiguration<T> {
 	private final T contributor;
 	private final IConfigurationElement configurationElement;
 	private final boolean enabled;

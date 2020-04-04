@@ -67,10 +67,8 @@ import org.eclipse.ui.dialogs.PropertyPage;
 import saker.build.file.path.WildcardPath;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
-import saker.build.ide.eclipse.properties.RepositoriesProjectPropertyPage.ClassPathLocationToStringVisitor;
-import saker.build.ide.eclipse.properties.RepositoriesProjectPropertyPage.ClassPathServiceEnumeratorTitleVisitor;
-import saker.build.ide.eclipse.properties.RepositoriesProjectPropertyPage.ClassPathServiceEnumeratorToStringVisitor;
 import saker.build.ide.support.SakerIDEProject;
+import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.ClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.ClassPathServiceEnumeratorIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
@@ -206,7 +204,7 @@ public class ScriptConfigurationProjectPropertyPage extends PropertyPage {
 			if (cplocation == null) {
 				return "";
 			}
-			return cplocation.accept(ClassPathLocationToStringVisitor.INSTANCE, null);
+			return SakerIDESupportUtils.classPathLocationToLabel(cplocation);
 		}
 
 		@Override
@@ -244,7 +242,7 @@ public class ScriptConfigurationProjectPropertyPage extends PropertyPage {
 			if (serviceenumerator == null) {
 				return "";
 			}
-			return serviceenumerator.accept(ClassPathServiceEnumeratorToStringVisitor.INSTANCE, null);
+			return SakerIDESupportUtils.serviceEnumeratorToLabel(serviceenumerator);
 		}
 
 		@Override
@@ -253,7 +251,7 @@ public class ScriptConfigurationProjectPropertyPage extends PropertyPage {
 			if (serviceenumerator == null) {
 				return "Class";
 			}
-			return serviceenumerator.accept(ClassPathServiceEnumeratorTitleVisitor.INSTANCE, null);
+			return SakerIDESupportUtils.serviceEnumeratorToTitleLabel(serviceenumerator);
 		}
 
 		@Override
@@ -333,8 +331,7 @@ public class ScriptConfigurationProjectPropertyPage extends PropertyPage {
 				StyledString styledString = new StyledString();
 				styledString.append(ObjectUtils.nullDefault(property.property.getScriptsWildcard(), ""));
 				styledString.append(
-						" - " + property.property.getClassPathLocation()
-								.accept(ClassPathLocationToStringVisitor.INSTANCE, null),
+						" - " + SakerIDESupportUtils.classPathLocationToLabel(property.property.getClassPathLocation()),
 						StyledString.QUALIFIER_STYLER);
 				return styledString;
 			}

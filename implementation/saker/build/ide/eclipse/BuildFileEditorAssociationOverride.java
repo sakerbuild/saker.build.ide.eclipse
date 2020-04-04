@@ -93,7 +93,7 @@ public class BuildFileEditorAssociationOverride implements IEditorAssociationOve
 		if (sakerproject == null) {
 			return false;
 		}
-		return sakerproject.isScriptConfigurationAppliesTo(file);
+		return sakerproject.isScriptModellingConfigurationAppliesTo(file);
 
 	}
 

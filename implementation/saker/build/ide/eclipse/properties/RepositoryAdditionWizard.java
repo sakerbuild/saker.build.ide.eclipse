@@ -197,7 +197,7 @@ public abstract class RepositoryAdditionWizard extends SakerWizard {
 		return "Task repository";
 	}
 
-	private class RepositoryIdentifierWizardPage extends SakerWizardPage implements FinishablePage {
+	private class RepositoryIdentifierWizardPage extends EclipseSakerWizardPage implements FinishablePage {
 		private Text identifierText;
 
 		private Supplier<ClassPathLocationWizardResult> classPathWizardResultSupplier = () -> SakerWizard

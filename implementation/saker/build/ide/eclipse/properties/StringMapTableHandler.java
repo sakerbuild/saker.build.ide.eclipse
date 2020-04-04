@@ -15,7 +15,6 @@
  */
 package saker.build.ide.eclipse.properties;
 
-import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -88,7 +87,7 @@ public class StringMapTableHandler {
 	public static final String E_DUPLICATE_KEY = "duplicate-key";
 
 	private Table table;
-	private Set<SimpleEntry<String, String>> options = new LinkedHashSet<>();
+	private Set<Entry<String, String>> options = new LinkedHashSet<>();
 	private List<ExtensionProvidedEntry> extensionEntries = Collections.emptyList();
 
 	private String keyValDialogTitle = "";
@@ -127,7 +126,7 @@ public class StringMapTableHandler {
 		this.options.clear();
 		if (!ObjectUtils.isNullOrEmpty(options)) {
 			for (Entry<String, String> entry : options) {
-				this.options.add(new SimpleEntry<>(entry.getKey(), entry.getValue()));
+				this.options.add(ImmutableUtils.makeImmutableMapEntry(entry.getKey(), entry.getValue()));
 			}
 		}
 		if (table != null) {
@@ -233,7 +232,8 @@ public class StringMapTableHandler {
 				dialog.create();
 				if (dialog.open() == Window.OK) {
 					options.remove(itementry);
-					options.add(new SimpleEntry<>(dialog.getParameterName(), dialog.getParameterValue()));
+					options.add(ImmutableUtils.makeImmutableMapEntry(dialog.getParameterName(),
+							dialog.getParameterValue()));
 					populateOptionsTable();
 					callModifyListeners();
 				}
@@ -246,7 +246,7 @@ public class StringMapTableHandler {
 			dialog.create();
 			if (dialog.open() == Window.OK) {
 				String paramname = dialog.getParameterName();
-				options.add(new SimpleEntry<>(paramname, dialog.getParameterValue()));
+				options.add(ImmutableUtils.makeImmutableMapEntry	(paramname, dialog.getParameterValue()));
 				populateOptionsTable();
 				callModifyListeners();
 			}

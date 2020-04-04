@@ -132,15 +132,17 @@ import saker.build.file.provider.LocalFileProvider;
 import saker.build.ide.eclipse.extension.script.information.IScriptInformationDesigner;
 import saker.build.ide.eclipse.extension.script.outline.IScriptOutlineDesigner;
 import saker.build.ide.eclipse.extension.script.proposal.IScriptProposalDesigner;
-import saker.build.ide.eclipse.script.information.BuildScriptScriptInformationEntry;
-import saker.build.ide.eclipse.script.information.BuildScriptScriptInformationRoot;
-import saker.build.ide.eclipse.script.outline.BuildScriptOutlineEntry;
-import saker.build.ide.eclipse.script.outline.BuildScriptOutlineRoot;
-import saker.build.ide.eclipse.script.proposal.BuildScriptProposalEntry;
-import saker.build.ide.eclipse.script.proposal.BuildScriptProposalRoot;
+import saker.build.ide.eclipse.script.information.EclipseScriptInformationEntry;
+import saker.build.ide.eclipse.script.information.EclipseScriptInformationRoot;
+import saker.build.ide.eclipse.script.outline.EclipseScriptOutlineEntry;
+import saker.build.ide.eclipse.script.outline.EclipseScriptOutlineRoot;
+import saker.build.ide.eclipse.script.proposal.EclipseScriptProposalEntry;
+import saker.build.ide.eclipse.script.proposal.EclipseScriptProposalRoot;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEPlugin.PluginResourceListener;
 import saker.build.ide.support.SakerIDEProject.ProjectResourceListener;
+import saker.build.ide.support.SakerIDESupportUtils;
+import saker.build.ide.support.ui.BaseScriptInformationRoot;
 import saker.build.runtime.environment.ForwardingImplSakerEnvironment;
 import saker.build.runtime.environment.SakerEnvironment;
 import saker.build.runtime.environment.SakerEnvironmentImpl;
@@ -166,7 +168,6 @@ import saker.build.scripting.model.SimplePartitionedTextContent;
 import saker.build.scripting.model.SimpleScriptModellingEnvironmentConfiguration;
 import saker.build.scripting.model.SimpleTextPartition;
 import saker.build.scripting.model.StructureOutlineEntry;
-import saker.build.scripting.model.TextPartition;
 import saker.build.scripting.model.TextRegionChange;
 import saker.build.scripting.model.TokenStyle;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
@@ -191,9 +192,9 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 
 	private static class OutlineElement {
 		protected OutlineElement parent;
-		protected BuildScriptOutlineEntry element;
+		protected EclipseScriptOutlineEntry element;
 
-		public OutlineElement(OutlineElement parent, BuildScriptOutlineEntry element) {
+		public OutlineElement(OutlineElement parent, EclipseScriptOutlineEntry element) {
 			this.parent = parent;
 			this.element = element;
 		}
@@ -207,7 +208,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 			@Override
 			public StyledString getStyledText(Object element) {
 				OutlineElement elem = (OutlineElement) element;
-				BuildScriptOutlineEntry entry = elem.element;
+				EclipseScriptOutlineEntry entry = elem.element;
 				StyledString widgetlabel = entry.getWidgetLabel();
 				if (widgetlabel != null) {
 					return widgetlabel;
@@ -229,7 +230,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 			@Override
 			public String getText(Object element) {
 				OutlineElement elem = (OutlineElement) element;
-				BuildScriptOutlineEntry entry = elem.element;
+				EclipseScriptOutlineEntry entry = elem.element;
 				StyledString widgetlabel = entry.getWidgetLabel();
 				if (widgetlabel != null) {
 					return widgetlabel.toString();
@@ -350,7 +351,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 
 		@Override
 		public Object[] getElements(Object inputElement) {
-			BuildScriptOutlineRoot root;
+			EclipseScriptOutlineRoot root;
 			try {
 				ScriptSyntaxModel m = BuildFileEditor.this.model;
 				if (m == null) {
@@ -360,7 +361,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 				if (structureoutline == null) {
 					return ObjectUtils.EMPTY_OBJECT_ARRAY;
 				}
-				root = new BuildScriptOutlineRoot(structureoutline);
+				root = EclipseScriptOutlineRoot.create(structureoutline);
 			} catch (Exception e) {
 				ImplActivator.getDefault().getEclipseIDEPlugin().displayException(e);
 				return ObjectUtils.EMPTY_OBJECT_ARRAY;
@@ -369,16 +370,16 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 			if (designer != null) {
 				designer.process(root);
 			}
-			List<? extends BuildScriptOutlineEntry> outlineroots = root.getRootEntries();
+			List<? extends EclipseScriptOutlineEntry> outlineroots = root.getRootEntries();
 			OutlineElement[] result = new OutlineElement[outlineroots.size()];
 			int i = 0;
-			for (BuildScriptOutlineEntry tree : outlineroots) {
+			for (EclipseScriptOutlineEntry tree : outlineroots) {
 				result[i++] = new OutlineElement(null, tree);
 			}
 			return result;
 		}
 
-		private IScriptOutlineDesigner getScriptOutlineDesigner(BuildScriptOutlineRoot outlineroot) {
+		private IScriptOutlineDesigner getScriptOutlineDesigner(EclipseScriptOutlineRoot outlineroot) {
 			if (outlineroot == null) {
 				return null;
 			}
@@ -394,11 +395,11 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		public Object[] getChildren(Object parentElement) {
 			OutlineElement elem = (OutlineElement) parentElement;
 
-			BuildScriptOutlineEntry tree = elem.element;
-			List<? extends BuildScriptOutlineEntry> children = tree.getChildren();
+			EclipseScriptOutlineEntry tree = elem.element;
+			List<? extends EclipseScriptOutlineEntry> children = tree.getChildren();
 			OutlineElement[] result = new OutlineElement[children.size()];
 			int i = 0;
-			for (BuildScriptOutlineEntry child : children) {
+			for (EclipseScriptOutlineEntry child : children) {
 				result[i++] = new OutlineElement(elem, child);
 			}
 			return result;
@@ -413,7 +414,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		@Override
 		public boolean hasChildren(Object element) {
 			OutlineElement elem = (OutlineElement) element;
-			BuildScriptOutlineEntry tree = elem.element;
+			EclipseScriptOutlineEntry tree = elem.element;
 			return !tree.getChildren().isEmpty();
 		}
 
@@ -447,7 +448,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 
 		private OutlineElement findSelectionOutlineElement(OutlineElement[] roots, int offset, int length) {
 			for (OutlineElement elem : roots) {
-				BuildScriptOutlineEntry t = elem.element;
+				EclipseScriptOutlineEntry t = elem.element;
 				StructureOutlineEntry e = t.getEntry();
 				if (offset >= e.getOffset() && offset < e.getOffset() + e.getLength()) {
 					//has overlapping region
@@ -462,9 +463,9 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 			return null;
 		}
 
-		private OutlineElement findSelectionOutlineElement(List<? extends BuildScriptOutlineEntry> roots, int offset,
+		private OutlineElement findSelectionOutlineElement(List<? extends EclipseScriptOutlineEntry> roots, int offset,
 				int length, OutlineElement parent) {
-			for (BuildScriptOutlineEntry t : roots) {
+			for (EclipseScriptOutlineEntry t : roots) {
 				StructureOutlineEntry e = t.getEntry();
 				if (offset >= e.getOffset() && offset < e.getOffset() + e.getLength()) {
 					//has overlapping region
@@ -606,32 +607,29 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		}
 
 		private String generateInformationHtml(Object input, Color bgcol) {
-			List<BuildScriptScriptInformationEntry> entries;
-			if (input instanceof ScriptTokenInformation) {
-				ScriptTokenInformation tokeninfo = (ScriptTokenInformation) input;
-
-				BuildScriptScriptInformationRoot inforoot = new BuildScriptScriptInformationRoot(tokeninfo);
-
+			List<EclipseScriptInformationEntry> entries;
+			if (input instanceof PartitionedTextContent) {
+				input = EclipseScriptInformationRoot.create((PartitionedTextContent) input);
+			} else if (input instanceof ScriptTokenInformation) {
+				EclipseScriptInformationRoot inforoot = EclipseScriptInformationRoot
+						.create((ScriptTokenInformation) input);
 				IScriptInformationDesigner designer = ImplActivator.getDefault().getEclipseIDEPlugin()
 						.getScriptInformationDesignerForSchemaIdentifier(inforoot.getSchemaIdentifier());
 				if (designer != null) {
 					designer.process(inforoot);
 				}
-				entries = BuildScriptScriptInformationRoot
-						.getFilteredBuildScriptScriptInformationEntries(inforoot.getEntries());
-			} else if (input instanceof PartitionedTextContent) {
+
+				input = inforoot;
+			}
+			if (input instanceof EclipseScriptInformationRoot) {
+				entries = ((EclipseScriptInformationRoot) input).getEntries();
+			} else if (input instanceof EclipseScriptProposalEntry) {
 				entries = new ArrayList<>();
-				for (TextPartition partition : BuildScriptScriptInformationRoot
-						.getFilteredTextPartitions(((PartitionedTextContent) input))) {
-					entries.add(new BuildScriptScriptInformationEntry(partition));
-				}
-			} else if (input instanceof BuildScriptProposalEntry) {
-				entries = new ArrayList<>();
-				List<? extends BuildScriptScriptInformationEntry> infoentries = BuildScriptScriptInformationRoot
+				List<? extends EclipseScriptInformationEntry> infoentries = EclipseScriptInformationRoot
 						.getFilteredBuildScriptScriptInformationEntries(
-								((BuildScriptProposalEntry) input).getInformationEntries());
+								((EclipseScriptProposalEntry) input).getInformationEntries());
 				if (infoentries != null) {
-					for (BuildScriptScriptInformationEntry entry : infoentries) {
+					for (EclipseScriptInformationEntry entry : infoentries) {
 						entries.add(entry);
 					}
 				}
@@ -657,69 +655,25 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 			return sb.toString();
 		}
 
-		private static String generateInformationHtml(List<? extends BuildScriptScriptInformationEntry> entries,
+		private static String generateInformationHtml(List<? extends EclipseScriptInformationEntry> entries,
 				Color bgcol) {
 			Set<String> sections = new LinkedHashSet<>();
 
 			StringBuilder sectionsb = new StringBuilder();
 
-			for (Iterator<? extends BuildScriptScriptInformationEntry> it = entries.iterator(); it.hasNext();) {
+			entries = BaseScriptInformationRoot.getFilteredBuildScriptScriptInformationEntries(entries);
+
+			for (EclipseScriptInformationEntry entry : entries) {
 				sectionsb.setLength(0);
-				BuildScriptScriptInformationEntry entry = it.next();
 				String title = entry.getTitle();
-				if (!ObjectUtils.isNullOrEmpty(title)) {
-					sectionsb.append("<div class=\"ptitle\">");
-					String iconsrc = entry.getIconSource();
-					if (!ObjectUtils.isNullOrEmpty(iconsrc)) {
-						sectionsb.append("<img src=\"");
-						sectionsb.append(iconsrc);
-						sectionsb.append("\">");
-					}
-					sectionsb.append(escapeHtml(title));
-					sectionsb.append("</div>");
-					String subtitle = entry.getSubTitle();
-					if (subtitle != null) {
-						sectionsb.append("<div class=\"psubtitle\">");
-						sectionsb.append(escapeHtml(subtitle));
-						sectionsb.append("</div>");
-					}
-				}
+				String subtitle = entry.getSubTitle();
+				String iconsrc = entry.getIconSource();
+
+				appendSectionHeader(sectionsb, SakerIDESupportUtils.resolveInformationTitle(title, subtitle),
+						SakerIDESupportUtils.resolveInformationSubTitle(title, subtitle), iconsrc);
+
 				FormattedTextContent formattedinput = entry.getContent();
-				format_appender:
-				if (formattedinput != null) {
-					Set<String> formats = formattedinput.getAvailableFormats();
-					if (formats.contains(FormattedTextContent.FORMAT_HTML)) {
-						String formattedtext = formattedinput.getFormattedText(FormattedTextContent.FORMAT_HTML);
-						if (!ObjectUtils.isNullOrEmpty(formattedtext)) {
-							//should not be null, but just in case of client error
-							sectionsb.append("<div class=\"pcontent\">");
-							sectionsb.append(formattedtext);
-							sectionsb.append("</div>");
-							break format_appender;
-						}
-					}
-					if (formats.contains(FormattedTextContent.FORMAT_PLAINTEXT)) {
-						String formattedtext = formattedinput.getFormattedText(FormattedTextContent.FORMAT_PLAINTEXT);
-						if (formattedtext != null) {
-							//should not be null, but just in case of client error
-							sectionsb.append("<div class=\"pcontent\" style=\"white-space: pre-line;\">");
-							sectionsb.append(escapeHtml(formattedtext));
-							sectionsb.append("</div>");
-							break format_appender;
-						}
-					}
-					for (String f : formats) {
-						String formattedtext = formattedinput.getFormattedText(f);
-						if (ObjectUtils.isNullOrEmpty(formattedtext)) {
-							continue;
-						}
-						//should not be null, but just in case of client error
-						sectionsb.append("<div class=\"pcontent\" style=\"white-space: pre-line;\">");
-						sectionsb.append(escapeHtml(formattedtext));
-						sectionsb.append("</div>");
-						break format_appender;
-					}
-				}
+				appendFormatted(sectionsb, formattedinput);
 				if (sectionsb.length() > 0) {
 					sections.add(sectionsb.toString());
 				}
@@ -741,8 +695,67 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 			return contentsb.toString();
 		}
 
+		private static void appendSectionHeader(StringBuilder sectionsb, String title, String subtitle,
+				String iconimgsrc) {
+			if (ObjectUtils.isNullOrEmpty(title)) {
+				return;
+			}
+			sectionsb.append("<div class=\"ptitle\">");
+			if (!ObjectUtils.isNullOrEmpty(iconimgsrc)) {
+				sectionsb.append("<img src=\"");
+				sectionsb.append(iconimgsrc);
+				sectionsb.append("\">");
+			}
+			sectionsb.append(escapeHtml(title));
+			sectionsb.append("</div>");
+			if (!ObjectUtils.isNullOrEmpty(subtitle)) {
+				sectionsb.append("<div class=\"psubtitle\">");
+				sectionsb.append(escapeHtml(subtitle));
+				sectionsb.append("</div>");
+			}
+		}
+
+		private static void appendFormatted(StringBuilder sectionsb, FormattedTextContent formattedinput) {
+			if (formattedinput == null) {
+				return;
+			}
+			//white-space: pre-line doesn't work in intellij, so we replace \n with <br> in cas of plaintext formats
+			Set<String> formats = formattedinput.getAvailableFormats();
+			if (formats.contains(FormattedTextContent.FORMAT_HTML)) {
+				String formattedtext = formattedinput.getFormattedText(FormattedTextContent.FORMAT_HTML);
+				if (!ObjectUtils.isNullOrEmpty(formattedtext)) {
+					//should not be null, but just in case of client error
+					sectionsb.append("<div class=\"pcontent\">");
+					sectionsb.append(formattedtext);
+					sectionsb.append("</div>");
+					return;
+				}
+			}
+			if (formats.contains(FormattedTextContent.FORMAT_PLAINTEXT)) {
+				String formattedtext = formattedinput.getFormattedText(FormattedTextContent.FORMAT_PLAINTEXT);
+				if (formattedtext != null) {
+					//should not be null, but just in case of client error
+					sectionsb.append("<div class=\"pcontent\">");
+					sectionsb.append(escapeHtml(formattedtext).replace("\n", "<br>"));
+					sectionsb.append("</div>");
+					return;
+				}
+			}
+			for (String f : formats) {
+				String formattedtext = formattedinput.getFormattedText(f);
+				if (ObjectUtils.isNullOrEmpty(formattedtext)) {
+					continue;
+				}
+				//should not be null, but just in case of client error
+				sectionsb.append("<div class=\"pcontent\">");
+				sectionsb.append(escapeHtml(formattedtext).replace("\n", "<br>"));
+				sectionsb.append("</div>");
+				return;
+			}
+		}
+
 		private static void appendHtmlHeader(StringBuilder contentsb, Color bgcol) {
-			contentsb.append("<html><head><style CHARSET=\"ISO-8859-1\" TYPE=\"text/css\">/* Font definitions */\r\n");
+			contentsb.append("<!DOCTYPE html><html><head><style>\r\n");
 			contentsb.append(
 					"html { font-family: 'Segoe UI',sans-serif; font-size: 9pt; font-style: normal; font-weight: normal; }\r\n");
 			contentsb.append(
@@ -751,11 +764,19 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 			contentsb.append(
 					".ptitle>img { display: inline-block; height: 1.3em; width: auto; margin-right: 0.2em; vertical-align: text-bottom; }\r\n");
 			contentsb.append(".psubtitle { font-weight: normal; font-style: italic; margin-left: 6px; }\r\n");
-			contentsb.append(".pcontent { margin-top: 10px; margin-left: 6px; }\r\n");
+			contentsb.append(".pcontent { margin-top: 5px; margin-left: 6px; }\r\n");
 			contentsb.append("hr { opacity: 0.5; }\r\n");
-			contentsb.append("pre { font-family: monospace; }</style></head><body style=\"background-color: #");
-			contentsb.append(Integer.toHexString(bgcol.getRed() << 16 | bgcol.getGreen() << 8 | bgcol.getBlue()));
-			contentsb.append(";\">");
+			contentsb.append("pre { font-family: monospace; }</style></head><body");
+			if (bgcol != null) {
+				contentsb.append(" style=\"background-color: #");
+				appendColorRGB(contentsb, bgcol);
+				contentsb.append(";\"");
+			}
+			contentsb.append(">");
+		}
+
+		private static void appendColorRGB(StringBuilder contentsb, Color bgcol) {
+			contentsb.append(String.format("%02x%02x%02x", bgcol.getRed(), bgcol.getGreen(), bgcol.getBlue()));
 		}
 
 		private static void appendHtmlFooter(StringBuilder contentsb) {
@@ -763,7 +784,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		}
 
 		private static String escapeHtml(String text) {
-			return text.replace("<", "&lt;").replace(">", "&gt;");
+			return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
 		}
 
 		@Override
@@ -923,7 +944,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		@Override
 		@Deprecated
 		public String getHoverInfo(ITextViewer textViewer, IRegion hoverRegion) {
-			throw new UnsupportedOperationException();
+			return "Eclipse called deprecated getHoverInfo function.";
 		}
 
 		@Override
@@ -1157,7 +1178,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 //					continue;
 //				}
 
-				TokenStyle style = findAppropriateStyle(styles.get(token.getType()), currentTokenTheme);
+				TokenStyle style = findAppropriateStyleForTheme(styles.get(token.getType()), currentTokenTheme);
 				if (style != null) {
 					Color fg = null;
 					Color bg = null;
@@ -1234,7 +1255,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 			return typecolors.computeIfAbsent(c, this::makeColor);
 		}
 
-		private TokenStyle findAppropriateStyle(Set<? extends TokenStyle> styles, int theme) {
+		private TokenStyle findAppropriateStyleForTheme(Set<? extends TokenStyle> styles, int theme) {
 			if (styles == null) {
 				return null;
 			}
@@ -1290,10 +1311,10 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 
 	private class InsertOnlyCompletionProposal implements ScriptProposalHolder, ICompletionProposal,
 			ICompletionProposalExtension3, ICompletionProposalExtension5, ICompletionProposalExtension6 {
-		private BuildScriptProposalEntry proposal;
+		private EclipseScriptProposalEntry proposal;
 		private List<? extends CompletionProposalEdit> changes;
 
-		public InsertOnlyCompletionProposal(BuildScriptProposalEntry proposal,
+		public InsertOnlyCompletionProposal(EclipseScriptProposalEntry proposal,
 				List<? extends CompletionProposalEdit> changes) {
 			this.proposal = proposal;
 			this.changes = changes;
@@ -1406,7 +1427,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 
 	}
 
-	private ICompletionProposal createProposal(BuildScriptProposalEntry proposalentry) {
+	private ICompletionProposal createProposal(EclipseScriptProposalEntry proposalentry) {
 		ScriptCompletionProposal proposal = proposalentry.getProposal();
 		List<? extends CompletionProposalEdit> changes = proposal.getTextChanges();
 		if (changes.isEmpty()) {
@@ -1503,14 +1524,14 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 	}
 
 	private ICompletionProposal[] createEclipseCompletionProposals(List<? extends ScriptCompletionProposal> proposals) {
-		BuildScriptProposalRoot proposalroot = new BuildScriptProposalRoot(proposals);
+		EclipseScriptProposalRoot proposalroot = EclipseScriptProposalRoot.create(proposals);
 		IScriptProposalDesigner designer = ImplActivator.getDefault().getEclipseIDEPlugin()
 				.getScriptProposalDesignerForSchemaIdentifiers(proposalroot.getSchemaIdentifiers());
 		if (designer != null) {
 			designer.process(proposalroot);
 		}
 		List<ICompletionProposal> resultprops = new ArrayList<>(proposals.size());
-		for (BuildScriptProposalEntry proposal : proposalroot.getProposals()) {
+		for (EclipseScriptProposalEntry proposal : proposalroot.getProposals()) {
 			ICompletionProposal prop = createProposal(proposal);
 			if (prop != null) {
 				resultprops.add(prop);

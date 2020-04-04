@@ -67,19 +67,21 @@ import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
+import saker.build.ide.support.ui.ExecutionDaemonSelector;
+import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
-import saker.build.thirdparty.saker.util.StringUtils;
 
 public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 	public static final String ID = "saker.build.ide.eclipse.properties.daemonConnectionsProjectPropertyPage";
 
 	private EclipseSakerIDEProject ideProject;
 	private List<TreePropertyItem<DaemonConnectionIDEProperty>> connectionItems = new ArrayList<>();
-	private String executionDaemonName;
 
 	private TreeViewer connectionsTreeViewer;
-	private List<String> executionDaemonComboNames = new ArrayList<>();
+//	private List<String> executionDaemonComboNames = new ArrayList<>();
 	private Combo executionDaemonCombo;
+
+	private ExecutionDaemonSelector daemonSelector;
 
 	private static final AtomicIntegerFieldUpdater<DaemonConnectionsProjectPropertyPage> AIFU_propertyCounter = AtomicIntegerFieldUpdater
 			.newUpdater(DaemonConnectionsProjectPropertyPage.class, "propertyCounter");
@@ -94,20 +96,17 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 	public void setElement(IAdaptable element) {
 		super.setElement(element);
 		ideProject = ImplActivator.getDefault().getOrCreateSakerProject(element.getAdapter(IProject.class));
+		IDEProjectProperties ideprops = null;
 		if (ideProject != null) {
-			IDEProjectProperties ideprops = ideProject.getIDEProjectProperties();
+			ideprops = ideProject.getIDEProjectProperties();
 			Set<? extends DaemonConnectionIDEProperty> connectionsprop = ideprops.getConnections();
 			if (!ObjectUtils.isNullOrEmpty(connectionsprop)) {
 				for (DaemonConnectionIDEProperty prop : connectionsprop) {
 					connectionItems.add(new TreePropertyItem<>(AIFU_propertyCounter.getAndIncrement(this), prop));
 				}
 			}
-			executionDaemonName = ideprops.getExecutionDaemonConnectionName();
-			if (ObjectUtils.isNullOrEmpty(executionDaemonName)) {
-				//nullize out empty string
-				executionDaemonName = null;
-			}
 		}
+		daemonSelector = new ExecutionDaemonSelector(ideprops);
 	}
 
 	@Override
@@ -191,7 +190,7 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 
 		@Override
 		public String getTitle() {
-			return "User as cluster";
+			return "Use as cluster";
 		}
 	}
 
@@ -341,6 +340,7 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 		executiondaemonlabel.setText("Execution daemon:");
 		executionDaemonCombo = new Combo(composite, SWT.BORDER | SWT.DROP_DOWN | SWT.READ_ONLY);
 		executionDaemonCombo.addSelectionListener(SelectionListener.widgetSelectedAdapter(ev -> {
+			daemonSelector.setExecutionDaemonIndex(executionDaemonCombo.getSelectionIndex());
 			validateProperties();
 		}));
 		updateExecutionDaemonComboItems();
@@ -351,44 +351,12 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 	}
 
 	private void updateExecutionDaemonComboItems() {
-		String execdaemonname;
-		if (executionDaemonCombo.getItemCount() == 0) {
-			execdaemonname = this.executionDaemonName;
-		} else {
-			int startselectionidx = executionDaemonCombo.getSelectionIndex();
-			execdaemonname = executionDaemonComboNames.get(startselectionidx);
-		}
+		String execdaemonname = daemonSelector.getSelectedExecutionDaemonName();
 
-		executionDaemonComboNames.clear();
-		List<String> daemoncomboitems = new ArrayList<>();
-		executionDaemonComboNames.add(null);
-		daemoncomboitems.add("In-process (default)");
-		if (!ObjectUtils.isNullOrEmpty(connectionItems)) {
-			ArrayList<? extends TreePropertyItem<DaemonConnectionIDEProperty>> copylist = new ArrayList<>(
-					connectionItems);
-			copylist.sort((l, r) -> StringUtils.compareStringsNullFirst(l.property.getConnectionName(),
-					r.property.getConnectionName()));
-			for (TreePropertyItem<DaemonConnectionIDEProperty> connprop : copylist) {
-				String connname = connprop.property.getConnectionName();
-				if (ObjectUtils.isNullOrEmpty(connname)) {
-					continue;
-				}
-				daemoncomboitems.add(connname + " @" + connprop.property.getNetAddress());
-				executionDaemonComboNames.add(connname);
-			}
-		}
-		int nidx = executionDaemonComboNames.indexOf(execdaemonname);
-		if (nidx < 0) {
-			nidx = executionDaemonComboNames.size();
-			daemoncomboitems.add(execdaemonname + " @<not-found>");
-			executionDaemonComboNames.add(execdaemonname);
-		}
-		executionDaemonCombo.setItems(daemoncomboitems.toArray(ObjectUtils.EMPTY_STRING_ARRAY));
-		executionDaemonCombo.select(nidx);
-	}
+		daemonSelector.reset(getDaemonConnectionIDEProperties(), execdaemonname);
 
-	private String getSelectedExecutionDaemonName() {
-		return executionDaemonComboNames.get(executionDaemonCombo.getSelectionIndex());
+		executionDaemonCombo.setItems(daemonSelector.getLabels().toArray(ObjectUtils.EMPTY_STRING_ARRAY));
+		executionDaemonCombo.select(daemonSelector.getExecutionDaemonIndex());
 	}
 
 	private final class DaemonConnectionTreeLabelProvider extends LabelProvider implements IStyledLabelProvider {
@@ -462,7 +430,7 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 				return;
 			}
 		}
-		String execdaemonname = getSelectedExecutionDaemonName();
+		String execdaemonname = daemonSelector.getSelectedExecutionDaemonName();
 		if (!ObjectUtils.isNullOrEmpty(execdaemonname)) {
 			if (!connectionnames.contains(execdaemonname)) {
 				invalidateWithErrorMessage("Execution daemon connection not found.");
@@ -487,22 +455,28 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 		super.performDefaults();
 		connectionItems.clear();
 		connectionsTreeViewer.refresh();
-		executionDaemonCombo.removeAll();
-		executionDaemonName = null;
+		daemonSelector.reset(null);
+
 		updateExecutionDaemonComboItems();
 		validateProperties();
 	}
 
 	@Override
 	public boolean performOk() {
+		Set<DaemonConnectionIDEProperty> connections = getDaemonConnectionIDEProperties();
+		String execdaemonname = daemonSelector.getSelectedExecutionDaemonName();
+		ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
+				.setConnections(ImmutableUtils.makeImmutableLinkedHashSet((connections)))
+				.setExecutionDaemonConnectionName(execdaemonname).build());
+		return true;
+	}
+
+	private Set<DaemonConnectionIDEProperty> getDaemonConnectionIDEProperties() {
 		Set<DaemonConnectionIDEProperty> connections = new LinkedHashSet<>();
 		for (TreePropertyItem<DaemonConnectionIDEProperty> item : connectionItems) {
 			connections.add(item.property);
 		}
-		ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
-				.setConnections(new LinkedHashSet<>(connections))
-				.setExecutionDaemonConnectionName(getSelectedExecutionDaemonName()).build());
-		return true;
+		return connections;
 	}
 
 	private static class DaemonConnectionDialog extends TitleAreaDialog {
