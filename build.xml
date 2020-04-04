@@ -69,7 +69,6 @@
 	</target>
 
 	<target name="properties" if="eclipse.running">
-		<property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter" />
 
 	</target>
 
@@ -84,114 +83,115 @@
 		<delete dir="${temp.folder}" />
 	</target>
 
+	<path id="@dot.classpath">
+		<fileset dir="eclipse/plugins" includes="org.eclipse.ui_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.runtime_*.jar" />
+		<fileset dir="eclipse/plugins" includes="javax.inject_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.osgi_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.osgi.compatibility.state_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.common_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.jobs_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.registry_*.jar" />
+		<fileset dir="eclipse/plugins" includes="javax.xml_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.preferences_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.contenttype_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.app_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.osgi.services_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.osgi.util_*.jar" />
+		<fileset dir="eclipse/plugins" includes="javax.servlet_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.swt_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.swt.win32.win32.x86_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.swt.gtk.linux.x86_64_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.jface_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.commands_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.bidi_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.ui.workbench_*.jar" />
+		<fileset dir="eclipse/plugins" includes="com.ibm.icu_*.jar" />
+		<fileset dir="eclipse/plugins" includes="javax.annotation_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.commands_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.expressions_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.contexts_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di.annotations_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.services_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.model.workbench_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.emf.ecore_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.emf.common_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.resources_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.resources.win32.x86_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.ant.core_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.variables_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.filesystem_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.filesystem.win32.x86_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.emf.xpath_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.apache.commons.jxpath_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.services_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.di_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di.extensions.supplier_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di.extensions_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.emf.ecore.change_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.emf.ecore.xmi_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.jdt.annotation_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench.renderers.swt_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench.swt_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.databinding_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.databinding.observable_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.databinding.property_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.jface.databinding_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.css.core_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.w3c.css.sac_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.apache.batik.css_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.apache.batik.i18n_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.apache.xmlgraphics_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.apache.commons.io_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.apache.commons.logging_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.apache.log4j_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.w3c.dom.svg_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.w3c.dom.smil_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.w3c.dom.events_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.apache.batik.util_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.apache.batik.constants_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.css.swt_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.bindings_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench3_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.css.swt.theme_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.widgets_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.help_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.jface.text_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.text_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench.addons.swt_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.ui.ide_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.ui.win32_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.ui.views_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.ui.forms_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.engine_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.core_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.metadata_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.metadata.repository_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.repository_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.security_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.security.win32.x86_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.tukaani.xz_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.ui.navigator_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.ui.console_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.ui.workbench.texteditor_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.compare.core_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.ui.editors_*.jar" />
+		<fileset dir="eclipse/plugins" includes="org.eclipse.core.filebuffers_*.jar" />
+	</path>
+
 	<target name="@dot.nestedJars">
 	</target>
 	<target name="@dot" depends="init,@dot.nestedJars" unless="@dot" description="Create jar: saker.build.ide.eclipse @dot.">
 		<delete dir="${build.result.folder}/@dot" />
 		<mkdir dir="${build.result.folder}/@dot" />
-		<path id="@dot.classpath">
-			<fileset dir="eclipse/plugins" includes="org.eclipse.ui_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.runtime_*.jar" />
-			<fileset dir="eclipse/plugins" includes="javax.inject_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.osgi_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.osgi.compatibility.state_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.common_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.jobs_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.registry_*.jar" />
-			<fileset dir="eclipse/plugins" includes="javax.xml_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.preferences_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.contenttype_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.app_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.osgi.services_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.osgi.util_*.jar" />
-			<fileset dir="eclipse/plugins" includes="javax.servlet_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.swt_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.swt.win32.win32.x86_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.jface_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.commands_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.bidi_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.workbench_*.jar" />
-			<fileset dir="eclipse/plugins" includes="com.ibm.icu_*.jar" />
-			<fileset dir="eclipse/plugins" includes="javax.annotation_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.commands_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.expressions_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.contexts_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di.annotations_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.services_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.model.workbench_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.emf.ecore_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.emf.common_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.resources_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.resources.win32.x86_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.ant.core_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.variables_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.filesystem_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.filesystem.win32.x86_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.emf.xpath_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.apache.commons.jxpath_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.services_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.di_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di.extensions.supplier_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di.extensions_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.emf.ecore.change_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.emf.ecore.xmi_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.jdt.annotation_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench.renderers.swt_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench.swt_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.databinding_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.databinding.observable_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.databinding.property_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.jface.databinding_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.css.core_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.w3c.css.sac_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.apache.batik.css_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.apache.batik.i18n_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.apache.xmlgraphics_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.apache.commons.io_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.apache.commons.logging_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.apache.log4j_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.w3c.dom.svg_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.w3c.dom.smil_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.w3c.dom.events_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.apache.batik.util_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.apache.batik.constants_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.css.swt_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.bindings_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench3_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.css.swt.theme_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.widgets_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.help_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.jface.text_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.text_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench.addons.swt_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.ide_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.win32_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.views_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.forms_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.engine_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.core_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.metadata_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.metadata.repository_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.repository_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.security_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.security.win32.x86_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.tukaani.xz_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.navigator_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.console_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.workbench.texteditor_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.compare.core_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.editors_*.jar" />
-			<fileset dir="eclipse/plugins" includes="org.eclipse.core.filebuffers_*.jar" />
-		</path>
 		<!-- compile the source code -->
 		<javac destdir="${build.result.folder}/@dot" failonerror="${javacFailOnError}" verbose="${javacVerbose}" debug="${javacDebugInfo}" includeAntRuntime="no" bootclasspath="${bundleBootClasspath}" source="${bundleJavacSource}" target="${bundleJavacTarget}">
 			<compilerarg line="${compilerArg}" compiler="${build.compiler}" />
 			<classpath refid="@dot.classpath" />
 			<src path="src/" />
-			<compilerarg value="@${basedir}/javaCompiler...args" compiler="org.eclipse.jdt.core.JDTCompilerAdapter" />
-			<compilerarg line="-log &apos;${build.result.folder}/@dot${logExtension}&apos;" compiler="org.eclipse.jdt.core.JDTCompilerAdapter" />
+			<compilerarg value="@${basedir}/javaCompiler...args" />
 		</javac>
 		<antcall target="checkCompilationResults" />
 		<!-- Copy necessary resources -->
@@ -212,8 +212,7 @@
 			<classpath path="saker.build.jar" />
 			<classpath path="saker.build-ide.jar" />
 			<src path="implementation/" />
-			<compilerarg value="@${basedir}/javaCompiler...args" compiler="org.eclipse.jdt.core.JDTCompilerAdapter" />
-			<compilerarg line="-log &apos;${build.result.folder}/@dot${logExtension}&apos;" compiler="org.eclipse.jdt.core.JDTCompilerAdapter" />
+			<compilerarg value="@${basedir}/javaCompiler...args" />
 		</javac>
 	</target>
 
