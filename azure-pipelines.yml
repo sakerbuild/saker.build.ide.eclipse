@@ -33,10 +33,6 @@ steps:
     pathtoPublish: build/plugin/saker.build.ide.eclipse.jar
     artifactName: saker.build.ide.eclipse.jar
 
-- script: |
-    echo "Publishing release $BUILD_SOURCEBRANCHNAME"
-  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
-  
 - task: GithubRelease@0
   displayName: 'Create GitHub Release'
   condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
