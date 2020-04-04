@@ -1,204 +1,204 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="saker.build.ide.eclipse" default="build.jars" basedir=".">
 
-	<property name="p2.build.repo" value="file:${buildDirectory}/buildRepo"/>
-	<property name="basews" value="${ws}"/>
-	<property name="baseos" value="${os}"/>
-	<property name="basearch" value="${arch}"/>
-	<property name="basenl" value="${nl}"/>
-	<property name="bundleId" value="saker.build.ide.eclipse"/>
-	<property name="bundleVersion" value="0.8.9.202004041005"/>
-	<property name="p2.publishonerror" value="false"/>
+	<property name="p2.build.repo" value="file:${buildDirectory}/buildRepo" />
+	<property name="basews" value="${ws}" />
+	<property name="baseos" value="${os}" />
+	<property name="basearch" value="${arch}" />
+	<property name="basenl" value="${nl}" />
+	<property name="bundleId" value="saker.build.ide.eclipse" />
+	<property name="bundleVersion" value="0.8.9.202004041005" />
+	<property name="p2.publishonerror" value="false" />
 
 	<!-- Compiler settings. -->
-	<property name="javacFailOnError" value="false"/>
-	<property name="javacDebugInfo" value="on"/>
-	<property name="javacVerbose" value="false"/>
-	<property name="logExtension" value=".log"/>
-	<property name="compilerArg" value=""/>
-	<property name="compilation.prereq.log" value="${buildDirectory}/prereqErrors.log"/>
-	<property name="javacSource" value="1.8"/>
-	<property name="javacTarget" value="1.8"/>
+	<property name="javacFailOnError" value="true" />
+	<property name="javacDebugInfo" value="on" />
+	<property name="javacVerbose" value="false" />
+	<property name="logExtension" value=".log" />
+	<property name="compilerArg" value="" />
+	<property name="compilation.prereq.log" value="${buildDirectory}/prereqErrors.log" />
+	<property name="javacSource" value="1.8" />
+	<property name="javacTarget" value="1.8" />
 	<condition property="dir_bootclasspath" value="${java.home}/../Classes">
 		<and>
-			<os family="mac"/>
-			<available file="${java.home}/../Classes" type="dir"/>
+			<os family="mac" />
+			<available file="${java.home}/../Classes" type="dir" />
 		</and>
 	</condition>
-	<property name="dir_bootclasspath" value="${java.home}/lib"/>
+	<property name="dir_bootclasspath" value="${java.home}/lib" />
 	<path id="path_bootclasspath">
 		<fileset dir="${dir_bootclasspath}">
-			<include name="*.jar"/>
+			<include name="*.jar" />
 		</fileset>
 	</path>
-	<property name="bootclasspath" refid="path_bootclasspath"/>
-	<condition property="bundleBootClasspath" value="${JavaSE-1.8}"	>
-		<isset property="JavaSE-1.8"/>
+	<property name="bootclasspath" refid="path_bootclasspath" />
+	<condition property="bundleBootClasspath" value="${JavaSE-1.8}">
+		<isset property="JavaSE-1.8" />
 	</condition>
-	<condition property="bundleJavacSource" value="1.8"	>
-		<isset property="JavaSE-1.8"/>
+	<condition property="bundleJavacSource" value="1.8">
+		<isset property="JavaSE-1.8" />
 	</condition>
-	<condition property="bundleJavacTarget" value="1.8"	>
-		<isset property="JavaSE-1.8"/>
+	<condition property="bundleJavacTarget" value="1.8">
+		<isset property="JavaSE-1.8" />
 	</condition>
-	<property name="bundleJavacSource" value="${javacSource}"/>
-	<property name="bundleJavacTarget" value="${javacTarget}"/>
-	<property name="bundleBootClasspath" value="${bootclasspath}"/>
+	<property name="bundleJavacSource" value="${javacSource}" />
+	<property name="bundleJavacTarget" value="${javacTarget}" />
+	<property name="bundleBootClasspath" value="${bootclasspath}" />
 
 	<target name="init" depends="properties">
-		<condition property="pluginTemp" value="${buildTempFolder}/plugins"		>
-			<isset property="buildTempFolder"/>
+		<condition property="pluginTemp" value="${buildTempFolder}/plugins">
+			<isset property="buildTempFolder" />
 		</condition>
-		<property name="pluginTemp" value="${basedir}"/>
-		<condition property="build.result.folder" value="${pluginTemp}/saker.build.ide.eclipse_0.8.9.202004041005"		>
-			<isset property="buildTempFolder"/>
+		<property name="pluginTemp" value="${basedir}" />
+		<condition property="build.result.folder" value="${pluginTemp}/saker.build.ide.eclipse_0.8.9.202004041005">
+			<isset property="buildTempFolder" />
 		</condition>
-		<property name="build.result.folder" value="${basedir}"/>
-		<property name="temp.folder" value="${basedir}/temp.folder"/>
-		<property name="plugin.destination" value="${basedir}"/>
-		<condition property="p2.publish.parts" value="true"		>
-			<istrue value="${p2.gathering}"/>
+		<property name="build.result.folder" value="${basedir}" />
+		<property name="temp.folder" value="${basedir}/temp.folder" />
+		<property name="plugin.destination" value="${basedir}" />
+		<condition property="p2.publish.parts" value="true">
+			<istrue value="${p2.gathering}" />
 		</condition>
-		<property name="compilation.problem.marker" value="${build.result.folder}/compilation.problem"/>
-		<condition property="compilation.problem.marker.exists" value="true"		>
+		<property name="compilation.problem.marker" value="${build.result.folder}/compilation.problem" />
+		<condition property="compilation.problem.marker.exists" value="true">
 			<and>
-				<available file="${compilation.problem.marker}"/>
-				<isfalse value="${p2.publishonerror}"/>
+				<available file="${compilation.problem.marker}" />
+				<isfalse value="${p2.publishonerror}" />
 			</and>
 		</condition>
 	</target>
 
 	<target name="properties" if="eclipse.running">
-		<property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
+		<property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter" />
 
 	</target>
 
 	<target name="build.update.jar" depends="init" description="Build the plug-in: saker.build.ide.eclipse for an update site.">
-		<delete dir="${temp.folder}"/>
-		<mkdir dir="${temp.folder}"/>
-		<antcall target="build.jars"/>
+		<delete dir="${temp.folder}" />
+		<mkdir dir="${temp.folder}" />
+		<antcall target="build.jars" />
 		<antcall target="gather.bin.parts">
-			<param name="destination.temp.folder" value="${temp.folder}/"/>
+			<param name="destination.temp.folder" value="${temp.folder}/" />
 		</antcall>
-		<jar destfile="${plugin.destination}/saker.build.ide.eclipse.jar" basedir="${temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" filesetmanifest="merge"/>
-		<delete dir="${temp.folder}"/>
+		<jar destfile="${plugin.destination}/saker.build.ide.eclipse.jar" basedir="${temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" filesetmanifest="merge" />
+		<delete dir="${temp.folder}" />
 	</target>
 
 	<target name="@dot.nestedJars">
 	</target>
 	<target name="@dot" depends="init,@dot.nestedJars" unless="@dot" description="Create jar: saker.build.ide.eclipse @dot.">
-		<delete dir="${build.result.folder}/@dot"/>
-		<mkdir dir="${build.result.folder}/@dot"/>
+		<delete dir="${build.result.folder}/@dot" />
+		<mkdir dir="${build.result.folder}/@dot" />
 		<path id="@dot.classpath">
-			<pathelement path="../../../eclipse/plugins/org.eclipse.ui_3.113.0.v20190513-2118.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.runtime_3.15.300.v20190508-0543.jar"/>
-			<pathelement path="../../../eclipse/plugins/javax.inject_1.0.0.v20091030.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.osgi_3.14.0.v20190517-1309.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.osgi.compatibility.state_1.1.500.v20190516-1407.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.common_3.10.400.v20190516-1504.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.jobs_3.10.400.v20190506-1457.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.registry_3.8.400.v20190516-1504.jar"/>
-			<pathelement path="../../../eclipse/plugins/javax.xml_1.3.4.v201005080400.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.preferences_3.7.400.v20190516-1504.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.contenttype_3.7.300.v20190215-2048.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.app_1.4.200.v20190516-1504.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.osgi.services_3.8.0.v20190206-2147.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.osgi.util_3.5.200.v20190115-2323.jar"/>
-			<pathelement path="../../../eclipse/plugins/javax.servlet_3.1.0.v201410161800.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.swt_3.111.0.v20190605-1801.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.swt.win32.win32.x86_64_3.111.0.v20190605-1801.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.jface_3.16.0.v20190528-0922.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.commands_3.9.400.v20190516-1358.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.bidi_1.2.0.v20190514-1046.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.ui.workbench_3.115.0.v20190521-1602.jar"/>
-			<pathelement path="../../../eclipse/plugins/com.ibm.icu_64.2.0.v20190507-1337.jar"/>
-			<pathelement path="../../../eclipse/plugins/javax.annotation_1.2.0.v201602091430.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.core.commands_0.12.600.v20190510-1100.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.expressions_3.6.400.v20190518-1240.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.core.contexts_1.8.100.v20190518-1217.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.core.di_1.7.200.v20190506-1457.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.core.di.annotations_1.6.400.v20190518-1217.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.core.services_2.1.400.v20181215-2145.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.workbench_1.10.0.v20190529-1505.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.model.workbench_2.1.400.v20190513-2118.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.emf.ecore_2.18.0.v20190528-0845.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.emf.common_2.16.0.v20190528-0845.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.resources_3.13.400.v20190505-1655.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.resources.win32.x86_64_3.5.300.v20181030-1942.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.ant.core_3.5.400.v20190510-0606.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.variables_3.4.500.v20190510-0549.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.filesystem_1.7.400.v20190518-1151.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.filesystem.win32.x86_64_1.4.100.v20180828-0158.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.emf.xpath_0.2.300.v20190513-2118.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.apache.commons.jxpath_1.3.0.v200911051830.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.services_1.3.500.v20190513-2118.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.di_1.2.600.v20190510-1100.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.core.di.extensions.supplier_0.15.300.v20190506-1457.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.core.di.extensions_0.15.300.v20190213-1308.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.emf.ecore.change_2.14.0.v20190528-0725.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.emf.ecore.xmi_2.16.0.v20190528-0725.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.jdt.annotation_2.2.300.v20190328-1431.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.workbench.renderers.swt_0.14.700.v20190517-1525.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.workbench.swt_0.14.600.v20190513-2118.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.databinding_1.7.400.v20190513-2118.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.databinding.observable_1.7.0.v20190515-0910.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.databinding.property_1.7.0.v20190510-1100.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.jface.databinding_1.9.0.v20190519-0933.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.css.core_0.12.700.v20190513-2118.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.w3c.css.sac_1.3.1.v200903091627.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.apache.batik.css_1.11.0.v20190515-0436.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.apache.batik.i18n_1.11.0.v20190515-0436.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.apache.xmlgraphics_2.3.0.v20190515-0436.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.apache.commons.io_2.6.0.v20190123-2029.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.apache.commons.logging_1.2.0.v20180409-1502.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.apache.log4j_1.2.15.v201012070815.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.w3c.dom.svg_1.1.0.v201011041433.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.w3c.dom.smil_1.0.1.v200903091627.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.w3c.dom.events_3.0.0.draft20060413_v201105210656.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.apache.batik.util_1.11.0.v20190515-0436.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.apache.batik.constants_1.11.0.v20190515-0436.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.css.swt_0.13.500.v20190513-2118.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.bindings_0.12.500.v20190510-1100.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.workbench3_0.15.100.v20190513-2118.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.css.swt.theme_0.12.300.v20190510-1100.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.widgets_1.2.400.v20190510-1100.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.help_3.8.400.v20190423-0921.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.jface.text_3.15.200.v20190519-2344.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.text_3.8.200.v20190519-2344.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.e4.ui.workbench.addons.swt_1.3.500.v20190513-2118.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.ui.ide_3.15.200.v20190519-2104.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.ui.win32_3.4.200.v20190513-2118.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.ui.views_3.9.400.v20190517-1612.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.ui.forms_3.8.0.v20190519-1034.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.p2.engine_2.6.300.v20190318-1320.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.p2.core_2.6.0.v20190215-2242.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.p2.metadata_2.4.400.v20190409-0548.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.p2.metadata.repository_1.3.100.v20180822-1302.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.p2.repository_2.4.400.v20190318-1320.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.security_1.3.200.v20190516-1504.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.equinox.security.win32.x86_64_1.1.100.v20180827-1235.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.tukaani.xz_1.8.0.v20180207-1613.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.ui.navigator_3.8.0.v20190519-2104.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.ui.console_3.8.500.v20190514-0743.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.ui.workbench.texteditor_3.12.0.v20190519-2344.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.compare.core_3.6.500.v20190519-2354.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.ui.editors_3.11.500.v20190519-2344.jar"/>
-			<pathelement path="../../../eclipse/plugins/org.eclipse.core.filebuffers_3.6.600.v20190519-2344.jar"/>
+			<fileset dir="eclipse/plugins" includes="org.eclipse.ui_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.runtime_*.jar" />
+			<fileset dir="eclipse/plugins" includes="javax.inject_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.osgi_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.osgi.compatibility.state_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.common_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.jobs_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.registry_*.jar" />
+			<fileset dir="eclipse/plugins" includes="javax.xml_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.preferences_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.contenttype_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.app_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.osgi.services_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.osgi.util_*.jar" />
+			<fileset dir="eclipse/plugins" includes="javax.servlet_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.swt_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.swt.win32.win32.x86_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.jface_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.commands_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.bidi_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.workbench_*.jar" />
+			<fileset dir="eclipse/plugins" includes="com.ibm.icu_*.jar" />
+			<fileset dir="eclipse/plugins" includes="javax.annotation_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.commands_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.expressions_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.contexts_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di.annotations_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.services_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.model.workbench_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.emf.ecore_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.emf.common_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.resources_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.resources.win32.x86_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.ant.core_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.variables_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.filesystem_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.filesystem.win32.x86_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.emf.xpath_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.apache.commons.jxpath_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.services_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.di_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di.extensions.supplier_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.core.di.extensions_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.emf.ecore.change_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.emf.ecore.xmi_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.jdt.annotation_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench.renderers.swt_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench.swt_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.databinding_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.databinding.observable_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.databinding.property_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.jface.databinding_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.css.core_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.w3c.css.sac_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.apache.batik.css_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.apache.batik.i18n_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.apache.xmlgraphics_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.apache.commons.io_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.apache.commons.logging_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.apache.log4j_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.w3c.dom.svg_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.w3c.dom.smil_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.w3c.dom.events_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.apache.batik.util_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.apache.batik.constants_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.css.swt_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.bindings_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench3_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.css.swt.theme_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.widgets_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.help_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.jface.text_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.text_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.e4.ui.workbench.addons.swt_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.ide_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.win32_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.views_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.forms_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.engine_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.core_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.metadata_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.metadata.repository_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.p2.repository_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.security_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.equinox.security.win32.x86_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.tukaani.xz_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.navigator_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.console_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.workbench.texteditor_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.compare.core_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.ui.editors_*.jar" />
+			<fileset dir="eclipse/plugins" includes="org.eclipse.core.filebuffers_*.jar" />
 		</path>
 		<!-- compile the source code -->
-		<javac destdir="${build.result.folder}/@dot" failonerror="${javacFailOnError}" verbose="${javacVerbose}" debug="${javacDebugInfo}" includeAntRuntime="no" bootclasspath="${bundleBootClasspath}" source="${bundleJavacSource}" target="${bundleJavacTarget}"		>
-			<compilerarg line="${compilerArg}" compiler="${build.compiler}"/>
+		<javac destdir="${build.result.folder}/@dot" failonerror="${javacFailOnError}" verbose="${javacVerbose}" debug="${javacDebugInfo}" includeAntRuntime="no" bootclasspath="${bundleBootClasspath}" source="${bundleJavacSource}" target="${bundleJavacTarget}">
+			<compilerarg line="${compilerArg}" compiler="${build.compiler}" />
 			<classpath refid="@dot.classpath" />
-			<src path="src/"			/>
-			<compilerarg value="@${basedir}/javaCompiler...args" compiler="org.eclipse.jdt.core.JDTCompilerAdapter"			/>
-			<compilerarg line="-log &apos;${build.result.folder}/@dot${logExtension}&apos;" compiler="org.eclipse.jdt.core.JDTCompilerAdapter"			/>
+			<src path="src/" />
+			<compilerarg value="@${basedir}/javaCompiler...args" compiler="org.eclipse.jdt.core.JDTCompilerAdapter" />
+			<compilerarg line="-log &apos;${build.result.folder}/@dot${logExtension}&apos;" compiler="org.eclipse.jdt.core.JDTCompilerAdapter" />
 		</javac>
-		<antcall target="checkCompilationResults"/>
+		<antcall target="checkCompilationResults" />
 		<!-- Copy necessary resources -->
 		<copy todir="${build.result.folder}/@dot" failonerror="true" overwrite="false">
 			<fileset dir="src/">
-				<exclude name="**/*.java"/>
-				<exclude name="**/package.htm*"/>
+				<exclude name="**/*.java" />
+				<exclude name="**/package.htm*" />
 			</fileset>
 		</copy>
 	</target>
@@ -218,71 +218,66 @@
 	</target>
 
 	<target name="src.zip" depends="init" unless="src.zip">
-		<mkdir dir="${build.result.folder}"/>
-		<antcall target="zip.src.zip"/>
+		<mkdir dir="${build.result.folder}" />
+		<antcall target="zip.src.zip" />
 	</target>
 	<target name="zip.src.zip">
 		<zip destfile="${build.result.folder}/src.zip" filesonly="false" whenempty="skip" update="false">
 			<fileset dir="src/">
-				<include name="**/*.java"/>
+				<include name="**/*.java" />
 			</fileset>
 		</zip>
 	</target>
 	<target name="copy.src.zip">
 		<copy todir="${source.destination.folder}/" failonerror="true" overwrite="true">
 			<fileset dir="src/">
-				<include name="**/*.java"/>
+				<include name="**/*.java" />
 			</fileset>
 		</copy>
 	</target>
 
 	<target name="build.jars" depends="init" description="Compile classes and build nested jars for the plug-in: saker.build.ide.eclipse.">
-		<delete file="${compilation.problem.marker}" quiet="true"/>
-		<available property="@dot" file="${build.result.folder}/@dot"/>
-		<antcall target="@dot"/>
-		<antcall target="@dotimpl"/>
+		<delete file="${compilation.problem.marker}" quiet="true" />
+		<available property="@dot" file="${build.result.folder}/@dot" />
+		<antcall target="@dot" />
+		<antcall target="@dotimpl" />
 	</target>
 
 	<target name="checkCompilationResults" if="compilation.error.occured">
-		<echo file="${compilation.problem.marker}" message="saker.build.ide.eclipse_0.8.9.202004041005${line.separator}compilation.error.occured=${compilation.error.occured}"/>
+		<echo file="${compilation.problem.marker}" message="saker.build.ide.eclipse_0.8.9.202004041005${line.separator}compilation.error.occured=${compilation.error.occured}" />
 		<eclipse.logCompileError log="${compilation.prereq.log}" bundle="saker.build.ide.eclipse_0.8.9.202004041005">
 		</eclipse.logCompileError>
 	</target>
 
 	<target name="build.sources" depends="init">
-		<available property="src.zip" file="${build.result.folder}/src.zip"/>
-		<antcall target="src.zip"/>
+		<available property="src.zip" file="${build.result.folder}/src.zip" />
+		<antcall target="src.zip" />
 	</target>
 
 	<target name="publish.bin.parts" depends="init" if="p2.publish.parts" unless="compilation.problem.marker.exists">
-		<mkdir dir="${build.result.folder}/saker.build.ide.eclipse_0.8.9.202004041005"/>
+		<mkdir dir="${build.result.folder}/saker.build.ide.eclipse_0.8.9.202004041005" />
 		<copy todir="${build.result.folder}" failonerror="true" overwrite="true">
 			<fileset dir="${basedir}">
-				<include name="META-INF/MANIFEST.MF"/>
-				<include name="plugin.xml"/>
-				<include name="fragment.xml"/>
+				<include name="META-INF/MANIFEST.MF" />
+				<include name="plugin.xml" />
+				<include name="fragment.xml" />
 			</fileset>
 		</copy>
-		<eclipse.versionReplacer path="${build.result.folder}" version="0.8.9.202004041005"/>
+		<eclipse.versionReplacer path="${build.result.folder}" version="0.8.9.202004041005" />
 		<antcall target="apitools.generation">
-			<param name="projectLocation" value="${basedir}"/>
-			<param name="binary.folders" value="${build.result.folder}/@dot"/>
-			<param name="projectName" value="${bundleId}_${bundleVersion}"/>
-			<param name="target.folder" value="${build.result.folder}"/>
+			<param name="projectLocation" value="${basedir}" />
+			<param name="binary.folders" value="${build.result.folder}/@dot" />
+			<param name="projectName" value="${bundleId}_${bundleVersion}" />
+			<param name="target.folder" value="${build.result.folder}" />
 		</antcall>
-		<eclipse.gatherBundle 
-		   metadataRepository="${p2.build.repo}"
-		   artifactRepository="${p2.build.repo}"
-		   buildResultFolder="${build.result.folder}"
-		   baseDirectory="${basedir}"
-		/>
+		<eclipse.gatherBundle metadataRepository="${p2.build.repo}" artifactRepository="${p2.build.repo}" buildResultFolder="${build.result.folder}" baseDirectory="${basedir}" />
 	</target>
 
 	<target name="gather.bin.parts" depends="init" if="destination.temp.folder">
-		<mkdir dir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005"/>
+		<mkdir dir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" />
 		<copy todir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" failonerror="true" overwrite="false">
 			<fileset dir="${build.result.folder}/@dot">
-				<include name="**"/>
+				<include name="**" />
 			</fileset>
 		</copy>
 		<copy todir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005/impl" failonerror="true" overwrite="false">
@@ -292,19 +287,19 @@
 		</copy>
 		<copy todir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" failonerror="true" overwrite="true">
 			<fileset dir="${basedir}">
-				<include name="plugin.xml"/>
-				<include name="META-INF/"/>
-				<include name="icons/"/>
-				<include name="saker.build.jar"/>
-				<include name="saker.build-ide.jar"/>
+				<include name="plugin.xml" />
+				<include name="META-INF/" />
+				<include name="icons/" />
+				<include name="saker.build.jar" />
+				<include name="saker.build-ide.jar" />
 			</fileset>
 		</copy>
-		<eclipse.versionReplacer path="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" version="0.8.9.202004041005"/>
+		<eclipse.versionReplacer path="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" version="0.8.9.202004041005" />
 		<antcall target="apitools.generation">
-			<param name="projectLocation" value="${basedir}"/>
-			<param name="binary.folders" value="${build.result.folder}/@dot"/>
-			<param name="projectName" value="${bundleId}_${bundleVersion}"/>
-			<param name="target.folder" value="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005"/>
+			<param name="projectLocation" value="${basedir}" />
+			<param name="binary.folders" value="${build.result.folder}/@dot" />
+			<param name="projectName" value="${bundleId}_${bundleVersion}" />
+			<param name="target.folder" value="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" />
 		</antcall>
 	</target>
 
@@ -312,19 +307,19 @@
 	</target>
 
 	<target name="gather.sources" depends="init" if="destination.temp.folder">
-		<mkdir dir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005"/>
-		<copy file="${build.result.folder}/src.zip" todir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" failonerror="false" overwrite="false"/>
+		<mkdir dir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" />
+		<copy file="${build.result.folder}/src.zip" todir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" failonerror="false" overwrite="false" />
 		<antcall target="copy.src.includes">
-			<param name="source.destination.folder" value="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005"/>
+			<param name="source.destination.folder" value="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" />
 		</antcall>
 	</target>
 
 	<target name="gather.individual.sources" depends="init">
 		<antcall target="copy.src.zip">
-			<param name="source.destination.folder" value="${destination.temp.folder}"/>
+			<param name="source.destination.folder" value="${destination.temp.folder}" />
 		</antcall>
 		<antcall target="copy.src.includes">
-			<param name="source.destination.folder" value="${destination.temp.folder}"/>
+			<param name="source.destination.folder" value="${destination.temp.folder}" />
 		</antcall>
 	</target>
 
@@ -332,50 +327,50 @@
 	</target>
 
 	<target name="gather.logs" depends="init" if="destination.temp.folder">
-		<mkdir dir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005"/>
+		<mkdir dir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" />
 		<copy todir="${destination.temp.folder}/saker.build.ide.eclipse_0.8.9.202004041005" failonerror="false" overwrite="false">
 			<fileset dir="${build.result.folder}">
-				<include name="@dot${logExtension}"/>
+				<include name="@dot${logExtension}" />
 			</fileset>
 		</copy>
 	</target>
 
 	<target name="clean" depends="init" description="Clean the plug-in: saker.build.ide.eclipse of all the zips, jars and logs created.">
-		<delete dir="${build.result.folder}/@dot"/>
-		<delete file="${build.result.folder}/src.zip"/>
-		<delete file="${plugin.destination}/saker.build.ide.eclipse_0.8.9.202004041005.jar"/>
-		<delete file="${plugin.destination}/saker.build.ide.eclipse_0.8.9.202004041005.zip"/>
-		<delete dir="${temp.folder}"/>
-		<delete file="${compilation.problem.marker}" quiet="true"/>
+		<delete dir="${build.result.folder}/@dot" />
+		<delete file="${build.result.folder}/src.zip" />
+		<delete file="${plugin.destination}/saker.build.ide.eclipse_0.8.9.202004041005.jar" />
+		<delete file="${plugin.destination}/saker.build.ide.eclipse_0.8.9.202004041005.zip" />
+		<delete dir="${temp.folder}" />
+		<delete file="${compilation.problem.marker}" quiet="true" />
 	</target>
 
 	<target name="refresh" depends="init" if="eclipse.running" description="Refresh this folder.">
-		<eclipse.convertPath fileSystemPath="C:/Bence/programozas/workspace/sakerbuild/saker.build.ide.eclipse" property="resourcePath"/>
-		<eclipse.refreshLocal resource="${resourcePath}" depth="infinite"/>
+		<eclipse.convertPath fileSystemPath="C:/Bence/programozas/workspace/sakerbuild/saker.build.ide.eclipse" property="resourcePath" />
+		<eclipse.refreshLocal resource="${resourcePath}" depth="infinite" />
 	</target>
 
 	<target name="zip.plugin" depends="init" description="Create a zip containing all the elements for the plug-in: saker.build.ide.eclipse.">
-		<delete dir="${temp.folder}"/>
-		<mkdir dir="${temp.folder}"/>
-		<antcall target="build.jars"/>
-		<antcall target="build.sources"/>
+		<delete dir="${temp.folder}" />
+		<mkdir dir="${temp.folder}" />
+		<antcall target="build.jars" />
+		<antcall target="build.sources" />
 		<antcall target="gather.bin.parts">
-			<param name="destination.temp.folder" value="${temp.folder}/"/>
+			<param name="destination.temp.folder" value="${temp.folder}/" />
 		</antcall>
 		<antcall target="gather.sources">
-			<param name="destination.temp.folder" value="${temp.folder}/"/>
+			<param name="destination.temp.folder" value="${temp.folder}/" />
 		</antcall>
 		<delete>
 			<fileset dir="${temp.folder}">
-				<include name="**/*.bin${logExtension}"/>
+				<include name="**/*.bin${logExtension}" />
 			</fileset>
 		</delete>
-		<zip destfile="${plugin.destination}/saker.build.ide.eclipse_0.8.9.202004041005.zip" basedir="${temp.folder}" filesonly="true" whenempty="skip" update="false"/>
-		<delete dir="${temp.folder}"/>
+		<zip destfile="${plugin.destination}/saker.build.ide.eclipse_0.8.9.202004041005.zip" basedir="${temp.folder}" filesonly="true" whenempty="skip" update="false" />
+		<delete dir="${temp.folder}" />
 	</target>
 
 	<target name="apitools.generation" if="generateAPIDescription">
-		<apitooling.apigeneration  projectName="${projectName}" project="${projectLocation}" binary="${binary.folders}" target="${target.folder}" extramanifests="${extraManifests}" allownonapiproject="${allowNonApiProject}"		/>
+		<apitooling.apigeneration projectName="${projectName}" project="${projectLocation}" binary="${binary.folders}" target="${target.folder}" extramanifests="${extraManifests}" allownonapiproject="${allowNonApiProject}" />
 	</target>
 
 </project>

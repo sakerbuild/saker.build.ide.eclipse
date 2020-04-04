@@ -14,6 +14,9 @@ steps:
     set -e
     curl http://ftp.halifax.rwth-aachen.de/eclipse//technology/epp/downloads/release/2020-03/R/eclipse-rcp-2020-03-R-linux-gtk-x86_64.tar.gz -o eclipse.tar.gz
     tar -xzf "eclipse.tar.gz"
+  displayName: 'Download Eclipse'
+- script: |
+    set -e
     eclipse/eclipse -nosplash  -application org.eclipse.ant.core.antRunner -data .. -verbose -buildfile build.xml -DbuildTempFolder=build/temp -DbuildDirectory=build -Dbuild.result.folder=build/res -Dplugin.destination=build/plugin build.update.jar
   displayName: 'Build update jar'
 - task: PublishBuildArtifacts@1
