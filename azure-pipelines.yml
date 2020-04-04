@@ -40,6 +40,6 @@ steps:
 - task: GithubRelease@0
   displayName: 'Create GitHub Release'
   inputs:
-    gitHubConnection: sakerbuild
+    gitHubConnection: saker.build.ide.eclipse-ci-release-push
     repositoryName: sakerbuild/saker.build.ide.eclipse
     assets: $(Build.ArtifactStagingDirectory)/saker.build.ide.eclipse.jar
