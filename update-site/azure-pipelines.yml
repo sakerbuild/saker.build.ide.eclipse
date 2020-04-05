@@ -41,10 +41,10 @@ steps:
     echo "saker.java.ide.eclipse  main: $(MAIN_VERSION_SAKER_JAVA_IDE_ECLIPSE)"
     echo "saker.build.ide.eclipse qualifier: $(QUALIFIER_VERSION_SAKER_BUILD_IDE_ECLIPSE)"
     echo "saker.java.ide.eclipse  qualifier: $(QUALIFIER_VERSION_SAKER_JAVA_IDE_ECLIPSE)"
-    sed -i -s 's/111.222.333.qualifier/111.222.333.$(QUALIFIER_VERSION_SAKER_BUILD_IDE_ECLIPSE)/g' release-*/**/*.xml
-    sed -i -s 's/111.222.334.qualifier/111.222.334.$(QUALIFIER_VERSION_SAKER_JAVA_IDE_ECLIPSE)/g' release-*/**/*.xml
-    sed -i -s 's/111.222.333/$(MAIN_VERSION_SAKER_BUILD_IDE_ECLIPSE)/g' release-*/**/*.xml
-    sed -i -s 's/111.222.334/$(MAIN_VERSION_SAKER_JAVA_IDE_ECLIPSE)/g' release-*/**/*.xml
+    sed -i -s 's/111.222.333.qualifier/111.222.333.$(QUALIFIER_VERSION_SAKER_BUILD_IDE_ECLIPSE)/g' **/*.xml
+    sed -i -s 's/111.222.334.qualifier/111.222.334.$(QUALIFIER_VERSION_SAKER_JAVA_IDE_ECLIPSE)/g' **/*.xml
+    sed -i -s 's/111.222.333/$(MAIN_VERSION_SAKER_BUILD_IDE_ECLIPSE)/g' **/*.xml
+    sed -i -s 's/111.222.334/$(MAIN_VERSION_SAKER_JAVA_IDE_ECLIPSE)/g' **/*.xml
   displayName: 'Patch XML versions'
 - script: |
     set -e
