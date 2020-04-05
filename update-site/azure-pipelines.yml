@@ -1,0 +1,88 @@
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- checkout: none
+- script: exit 1
+  condition: eq(variables['RELEASE_VERSION'], '')
+  displayName: 'Check RELEASE_VERSION variable'
+- task: DownloadGitHubRelease@0
+  inputs:
+    connection: 'saker.build.ide.eclipse-ci-release-push-2'
+    userRepository: 'sakerbuild/saker.build.ide.eclipse'
+    defaultVersionType: 'specificTag'
+    version: '$(RELEASE_VERSION)'
+    downloadPath: 'release-saker.build.ide.eclipse'
+  displayName: 'Download saker.build.ide.eclipse GH release'
+- task: DownloadGitHubRelease@0
+  inputs:
+    connection: 'saker.build.ide.eclipse-ci-release-push-2'
+    userRepository: 'sakerbuild/saker.java.ide.eclipse'
+    defaultVersionType: 'specificTag'
+    version: '$(RELEASE_VERSION)'
+    downloadPath: 'release-saker.java.ide.eclipse'
+  displayName: 'Download saker.java.ide.eclipse GH release'
+- script: |
+    set -e
+    echo "##vso[task.setvariable variable=FULL_VERSION_SAKER_BUILD_IDE_ECLIPSE]$(cat release-saker.build.ide.eclipse/saker.build.ide.eclipse.ver)"
+    echo "##vso[task.setvariable variable=FULL_VERSION_SAKER_JAVA_IDE_ECLIPSE]$(cat release-saker.java.ide.eclipse/saker.java.ide.eclipse.ver)"
+    echo "##vso[task.setvariable variable=QUALIFIER_VERSION_SAKER_BUILD_IDE_ECLIPSE]$(cat release-saker.build.ide.eclipse/saker.build.ide.eclipse.ver | sed -r 's/[0-9]+\.[0-9]+\.[0-9]+\.([0-9]+)/\1/')"
+    echo "##vso[task.setvariable variable=QUALIFIER_VERSION_SAKER_JAVA_IDE_ECLIPSE]$(cat release-saker.java.ide.eclipse/saker.java.ide.eclipse.ver | sed -r 's/[0-9]+\.[0-9]+\.[0-9]+\.([0-9]+)/\1/')"
+    echo "##vso[task.setvariable variable=MAIN_VERSION_SAKER_BUILD_IDE_ECLIPSE]$(cat release-saker.build.ide.eclipse/saker.build.ide.eclipse.ver | sed -r 's/([0-9]+\.[0-9]+\.[0-9]+)\.[0-9]+/\1/')"
+    echo "##vso[task.setvariable variable=MAIN_VERSION_SAKER_JAVA_IDE_ECLIPSE]$(cat release-saker.java.ide.eclipse/saker.java.ide.eclipse.ver | sed -r 's/([0-9]+\.[0-9]+\.[0-9]+)\.[0-9]+/\1/')"
+  displayName: 'Determine versions'
+- script: |
+    set -e
+    echo "saker.build.ide.eclipse full: $(FULL_VERSION_SAKER_BUILD_IDE_ECLIPSE)"
+    echo "saker.java.ide.eclipse  full: $(FULL_VERSION_SAKER_JAVA_IDE_ECLIPSE)"
+    echo "saker.build.ide.eclipse main: $(MAIN_VERSION_SAKER_BUILD_IDE_ECLIPSE)"
+    echo "saker.java.ide.eclipse  main: $(MAIN_VERSION_SAKER_JAVA_IDE_ECLIPSE)"
+    echo "saker.build.ide.eclipse qualifier: $(QUALIFIER_VERSION_SAKER_BUILD_IDE_ECLIPSE)"
+    echo "saker.java.ide.eclipse  qualifier: $(QUALIFIER_VERSION_SAKER_JAVA_IDE_ECLIPSE)"
+    sed -i -s 's/111.222.333.qualifier/111.222.333.$(QUALIFIER_VERSION_SAKER_BUILD_IDE_ECLIPSE)/g' **/*.xml
+    sed -i -s 's/111.222.334.qualifier/111.222.334.$(QUALIFIER_VERSION_SAKER_JAVA_IDE_ECLIPSE)/g' **/*.xml
+    sed -i -s 's/111.222.333/$(MAIN_VERSION_SAKER_BUILD_IDE_ECLIPSE)/g' **/*.xml
+    sed -i -s 's/111.222.334/$(MAIN_VERSION_SAKER_JAVA_IDE_ECLIPSE)/g' **/*.xml
+  displayName: 'Patch XML versions'
+- script: |
+    set -e
+    for plugin in saker.build.ide.eclipse saker.java.ide.eclipse; do
+      mkdir -p site-$plugin/features
+      mkdir -p site-$plugin/plugins
+      cp release-$plugin/$plugin.jar site-$plugin/plugins/
+      cp release-$plugin/feature.xml site-$plugin/features/
+    done
+  displayName: 'Generate site locations'
+- script: |
+    set -e
+    curl http://ftp.halifax.rwth-aachen.de/eclipse//technology/epp/downloads/release/2020-03/R/eclipse-rcp-2020-03-R-linux-gtk-x86_64.tar.gz -o eclipse.tar.gz
+    tar -xzf "eclipse.tar.gz"
+  displayName: 'Download Eclipse'
+- script: |
+    set -e
+    mkdir repo
+    for plugin in saker.build.ide.eclipse saker.java.ide.eclipse; do
+      echo "Append $plugin"
+      eclipse/eclipse -nosplash -application org.eclipse.equinox.p2.publisher.FeaturesAndBundlesPublisher -metadataRepository file:$(pwd)/repo -artifactRepository file:$(pwd)/repo -artifactRepositoryName "Saker.build Update Site" -metadataRepositoyName "Saker.build Update Site" -publishArtifacts -compress -append -source site-$plugin
+    done
+    echo "Set categories"
+    eclipse/eclipse -nosplash -application org.eclipse.equinox.p2.publisher.CategoryPublisher -metadataRepository file:$(pwd)/repo -categoryDefinition file:$(pwd)/release-saker.build.ide.eclipse/category.xml -categoryQualifier cq -compress
+  displayName: 'Generate site contents'
+   
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish update-site artifact'
+  inputs:
+    pathtoPublish: repo/
+    artifactName: saker.build_update-site
+
+- task: GithubRelease@0
+  displayName: 'Create GitHub Release'
+  inputs:
+    gitHubConnection: saker.build.ide.eclipse-ci-release-push-2
+    repositoryName: sakerbuild/saker.build.ide.eclipse
+    tagSource: manual
+    tag: 'update-site-$(RELEASE_VERSION)'
+    title: 'Saker.build Eclipse Update Site $(RELEASE_VERSION)'
+    assets: repo/
