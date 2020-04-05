@@ -33,10 +33,10 @@ steps:
 - script: |
     set -e
     mkdir gh-release
-    cp $(Build.ArtifactStagingDirectory)/saker.build.ide.eclipse.jar gh-release/
+    cp build/plugin/saker.build.ide.eclipse.jar gh-release/
+    cp build/plugin/saker.build.ide.eclipse.ver gh-release/
     cp update-site/features/feature.xml gh-release/
     cp update-site/category.xml gh-release/
-    cp build/plugin/saker.build.ide.eclipse.ver gh-release/
   displayName: 'Setup GitHub Release'
     
 - task: PublishBuildArtifacts@1
