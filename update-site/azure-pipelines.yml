@@ -77,6 +77,12 @@ steps:
     pathtoPublish: repo/
     artifactName: saker.build_update-site
 
+- script: |
+    set -e
+    cd repo
+    zip -r ../site.zip *
+  displayName: 'ZIP update site'
+    
 - task: GithubRelease@0
   displayName: 'Create GitHub Release'
   inputs:
@@ -85,4 +91,4 @@ steps:
     tagSource: manual
     tag: 'update-site-$(RELEASE_VERSION)'
     title: 'Saker.build Eclipse Update Site $(RELEASE_VERSION)'
-    assets: repo/
+    assets: site.zip
