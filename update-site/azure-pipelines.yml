@@ -11,17 +11,17 @@ steps:
 - task: DownloadGitHubRelease@0
   inputs:
     connection: 'saker.build.ide.eclipse-ci-release-push-2'
-    userRepository: 'Sipkab/saker.build-site-ci-publish-test'
+    userRepository: 'sakerbuild/saker.build.ide.eclipse'
     defaultVersionType: 'specificTag'
-    version: '$(RELEASE_VERSION)-saker.build.ide.eclipse'
+    version: '$(RELEASE_VERSION)'
     downloadPath: 'release-saker.build.ide.eclipse'
   displayName: 'Download saker.build.ide.eclipse GH release'
 - task: DownloadGitHubRelease@0
   inputs:
     connection: 'saker.build.ide.eclipse-ci-release-push-2'
-    userRepository: 'Sipkab/saker.build-site-ci-publish-test'
+    userRepository: 'sakerbuild/saker.java.ide.eclipse'
     defaultVersionType: 'specificTag'
-    version: '$(RELEASE_VERSION)-saker.java.ide.eclipse'
+    version: '$(RELEASE_VERSION)'
     downloadPath: 'release-saker.java.ide.eclipse'
   displayName: 'Download saker.java.ide.eclipse GH release'
 - script: |
@@ -76,3 +76,13 @@ steps:
   inputs:
     pathtoPublish: repo/
     artifactName: saker.build_update-site
+
+- task: GithubRelease@0
+  displayName: 'Create GitHub Release'
+  inputs:
+    gitHubConnection: saker.build.ide.eclipse-ci-release-push-2
+    repositoryName: sakerbuild/saker.build.ide.eclipse
+    tagSource: manual
+    tag: 'update-site-$(RELEASE_VERSION)'
+    title: 'Saker.build Eclipse Update Site $(RELEASE_VERSION)'
+    assets: repo/
