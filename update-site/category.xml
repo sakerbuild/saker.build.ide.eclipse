@@ -3,7 +3,7 @@
    <feature url="features/feature.saker.build.ide.eclipse_111.222.333.qualifier.jar" id="feature.saker.build.ide.eclipse" version="111.222.333.qualifier">
       <category name="category.saker.build.system"/>
    </feature>
-   <feature url="features/features.saker.java.ide.eclipse_111.222.333.qualifier.jar" id="feature.saker.java.ide.eclipse" version="111.222.333.qualifier">
+   <feature url="features/features.saker.java.ide.eclipse_111.222.334.qualifier.jar" id="feature.saker.java.ide.eclipse" version="111.222.334.qualifier">
       <category name="category.saker.build.ide.config"/>
    </feature>
    <category-def name="category.saker.build.system" label="Saker.build system">
