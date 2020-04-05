@@ -29,11 +29,21 @@ steps:
     set -e
     eclipse/eclipse -nosplash  -application org.eclipse.ant.core.antRunner -data .. -verbose -buildfile build.xml -DbuildTempFolder=build/temp -DbuildDirectory=build -Dbuild.result.folder=build/res -Dplugin.destination=build/plugin -DbuildVersionNumber=$BUILD_VERSION_NUMBER build.update.jar
   displayName: 'Build update jar'
+  
+- script: |
+    set -e
+    mkdir gh-release
+    cp $(Build.ArtifactStagingDirectory)/saker.build.ide.eclipse.jar gh-release/
+    cp update-site/features/feature.xml gh-release/
+    cp update-site/category.xml gh-release/
+    cp build/plugin/saker.build.ide.eclipse.ver gh-release/
+  displayName: 'Setup GitHub Release'
+    
 - task: PublishBuildArtifacts@1
-  displayName: 'Publish plugin JAR'
+  displayName: 'Publish artifacts'
   inputs:
-    pathtoPublish: build/plugin/saker.build.ide.eclipse.jar
-    artifactName: saker.build.ide.eclipse.jar
+    pathtoPublish: gh-release/
+    artifactName: saker.build.ide.eclipse
 
 - task: GithubRelease@0
   displayName: 'Create GitHub Release'
@@ -41,4 +51,4 @@ steps:
   inputs:
     gitHubConnection: saker.build.ide.eclipse-ci-release-push-2
     repositoryName: sakerbuild/saker.build.ide.eclipse
-    assets: $(Build.ArtifactStagingDirectory)/saker.build.ide.eclipse.jar
+    assets: gh-release/

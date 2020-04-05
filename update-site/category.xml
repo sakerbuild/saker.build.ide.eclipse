@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature url="features/feature.saker.build.ide.eclipse_111.222.333.qualifier.jar" id="feature.saker.build.ide.eclipse" version="111.222.333.qualifier">
+      <category name="category.saker.build.system"/>
+   </feature>
+   <feature url="features/features.saker.java.ide.eclipse_111.222.333.qualifier.jar" id="feature.saker.java.ide.eclipse" version="111.222.333.qualifier">
+      <category name="category.saker.build.ide.config"/>
+   </feature>
+   <category-def name="category.saker.build.system" label="Saker.build system">
+      <description>
+         Plug-ins for Eclipse to use the saker.build system.
+      </description>
+   </category-def>
+   <category-def name="category.saker.build.ide.config" label="IDE configuration support with saker.build">
+      <description>
+         Plug-ins for Eclipse to support project configuration based on the results of build executions.
+      </description>
+   </category-def>
+</site>
