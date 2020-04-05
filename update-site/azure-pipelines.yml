@@ -15,6 +15,7 @@ steps:
     defaultVersionType: 'specificTag'
     version: '$(RELEASE_VERSION)-saker.build.ide.eclipse'
     downloadPath: 'release-saker.build.ide.eclipse'
+  displayName: 'Download saker.build.ide.eclipse GH release'
 - task: DownloadGitHubRelease@0
   inputs:
     connection: 'saker.build.ide.eclipse-ci-release-push-2'
@@ -22,19 +23,28 @@ steps:
     defaultVersionType: 'specificTag'
     version: '$(RELEASE_VERSION)-saker.java.ide.eclipse'
     downloadPath: 'release-saker.java.ide.eclipse'
+  displayName: 'Download saker.java.ide.eclipse GH release'
 - script: |
     set -e
     echo "##vso[task.setvariable variable=FULL_VERSION_SAKER_BUILD_IDE_ECLIPSE]$(cat release-saker.build.ide.eclipse/saker.build.ide.eclipse.ver)"
     echo "##vso[task.setvariable variable=FULL_VERSION_SAKER_JAVA_IDE_ECLIPSE]$(cat release-saker.java.ide.eclipse/saker.java.ide.eclipse.ver)"
     echo "##vso[task.setvariable variable=QUALIFIER_VERSION_SAKER_BUILD_IDE_ECLIPSE]$(cat release-saker.build.ide.eclipse/saker.build.ide.eclipse.ver | sed -r 's/[0-9]+\.[0-9]+\.[0-9]+\.([0-9]+)/\1/')"
     echo "##vso[task.setvariable variable=QUALIFIER_VERSION_SAKER_JAVA_IDE_ECLIPSE]$(cat release-saker.java.ide.eclipse/saker.java.ide.eclipse.ver | sed -r 's/[0-9]+\.[0-9]+\.[0-9]+\.([0-9]+)/\1/')"
+    echo "##vso[task.setvariable variable=MAIN_VERSION_SAKER_BUILD_IDE_ECLIPSE]$(cat release-saker.build.ide.eclipse/saker.build.ide.eclipse.ver | sed -r 's/([0-9]+\.[0-9]+\.[0-9]+)\.[0-9]+/\1/')"
+    echo "##vso[task.setvariable variable=MAIN_VERSION_SAKER_JAVA_IDE_ECLIPSE]$(cat release-saker.java.ide.eclipse/saker.java.ide.eclipse.ver | sed -r 's/([0-9]+\.[0-9]+\.[0-9]+)\.[0-9]+/\1/')"
   displayName: 'Determine versions'
 - script: |
     set -e
+    echo "saker.build.ide.eclipse full: $(FULL_VERSION_SAKER_BUILD_IDE_ECLIPSE)"
+    echo "saker.java.ide.eclipse  full: $(FULL_VERSION_SAKER_JAVA_IDE_ECLIPSE)"
+    echo "saker.build.ide.eclipse main: $(MAIN_VERSION_SAKER_BUILD_IDE_ECLIPSE)"
+    echo "saker.java.ide.eclipse  main: $(MAIN_VERSION_SAKER_JAVA_IDE_ECLIPSE)"
+    echo "saker.build.ide.eclipse qualifier: $(QUALIFIER_VERSION_SAKER_BUILD_IDE_ECLIPSE)"
+    echo "saker.java.ide.eclipse  qualifier: $(QUALIFIER_VERSION_SAKER_JAVA_IDE_ECLIPSE)"
     sed -i -s 's/111.222.333.qualifier/111.222.333.$(QUALIFIER_VERSION_SAKER_BUILD_IDE_ECLIPSE)/g' **/*.xml
     sed -i -s 's/111.222.334.qualifier/111.222.334.$(QUALIFIER_VERSION_SAKER_JAVA_IDE_ECLIPSE)/g' **/*.xml
-    sed -i -s 's/111.222.333/$(FULL_VERSION_SAKER_BUILD_IDE_ECLIPSE)/g' **/*.xml
-    sed -i -s 's/111.222.334/$(FULL_VERSION_SAKER_JAVA_IDE_ECLIPSE)/g' **/*.xml
+    sed -i -s 's/111.222.333/$(MAIN_VERSION_SAKER_BUILD_IDE_ECLIPSE)/g' **/*.xml
+    sed -i -s 's/111.222.334/$(MAIN_VERSION_SAKER_JAVA_IDE_ECLIPSE)/g' **/*.xml
   displayName: 'Patch XML versions'
 - script: |
     set -e
@@ -54,8 +64,10 @@ steps:
     set -e
     mkdir repo
     for plugin in saker.build.ide.eclipse saker.java.ide.eclipse; do
+      echo 'Append $plugin'
       eclipse/eclipse -nosplash -application org.eclipse.equinox.p2.publisher.FeaturesAndBundlesPublisher -metadataRepository file:$(pwd)/repo -artifactRepository file:$(pwd)/repo -artifactRepositoryName "Saker.build Update Site" -metadataRepositoyName "Saker.build Update Site" -publishArtifacts -compress -append -source site-$plugin
     done
+    echo 'Set categories'
     eclipse/eclipse -nosplash -application org.eclipse.equinox.p2.publisher.CategoryPublisher -metadataRepository file:$(pwd)/repo -categoryDefinition file:$(pwd)/site-saker.build.ide.eclipse/category.xml -categoryQualifier cq -compress
   displayName: 'Generate site contents'
    
