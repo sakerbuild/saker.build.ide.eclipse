@@ -12,14 +12,17 @@ pool:
 steps:
 - script: |
     set -e
-    echo "##vso[task.setvariable variable=BUILD_VERSION_NUMBER]$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/')"
-  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
+    echo "##vso[task.setvariable variable=BUILD_VERSION_NUMBER]$(cat META-INF/MANIFEST.MF | grep Bundle-Version: | sed -r 's/Bundle-Version: (.*)\.qualifier/\1/')"
   displayName: 'Set BUILD_VERSION_NUMBER'
 - script: |
     set -e
-    echo "##vso[task.setvariable variable=BUILD_VERSION_NUMBER]$(cat META-INF/MANIFEST.MF | grep Bundle-Version: | sed -r 's/Bundle-Version: (.*)\.qualifier/\1/')"
-  condition: not(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
-  displayName: 'Set BUILD_VERSION_NUMBER'
+    TAGVER=$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/')
+    if [ $(BUILD_VERSION_NUMBER) != "$TAGVER" ]; then
+      echo "Bundle-Version: $(BUILD_VERSION_NUMBER) doesn't match tag version: $TAGVER"
+      exit 1
+    fi
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
+  displayName: 'Check version number - tag consistency '
 - script: |
     set -e
     curl http://ftp.halifax.rwth-aachen.de/eclipse//technology/epp/downloads/release/2020-03/R/eclipse-rcp-2020-03-R-linux-gtk-x86_64.tar.gz -o eclipse.tar.gz
