@@ -110,18 +110,26 @@ public class ProjectBuilder extends IncrementalProjectBuilder {
 
 	@Override
 	protected IProject[] build(int kind, Map<String, String> args, IProgressMonitor monitor) throws CoreException {
-		if (kind == AUTO_BUILD) {
-			return null;
-		}
-		IProject project = getProject();
-		ImplActivator activator = ImplActivator.getDefault();
-		EclipseSakerIDEProject sakerproject = activator.getOrCreateSakerProject(project);
-		if (sakerproject == null) {
-			activator.getEclipseIDEPlugin().displayError(
-					"Project " + project.getName() + " is not a saker.build project. Builder is not invoked on it.");
-			return null;
-		}
-		sakerproject.build(monitor);
+		//don't run the saker.build builder on any Eclipse build events
+		//the builder is only registered to support the Clean IDE action, however,
+		//running the builds via the builder can be impractical
+		// * auto builds can be annoying as saker.build builds perform their own stuff in general
+		// * building during a complete workspace build is usually not wished for
+		// * the target that is being build is unclear in some builds
+		// therefore, the builder can be invoked through the saker.build menu, or via hotkeys
+		
+//		if (kind == AUTO_BUILD) {
+//			return null;
+//		}
+//		IProject project = getProject();
+//		ImplActivator activator = ImplActivator.getDefault();
+//		EclipseSakerIDEProject sakerproject = activator.getOrCreateSakerProject(project);
+//		if (sakerproject == null) {
+//			activator.getEclipseIDEPlugin().displayError(
+//					"Project " + project.getName() + " is not a saker.build project. Builder is not invoked on it.");
+//			return null;
+//		}
+//		sakerproject.build(monitor);
 
 		return null;
 	}
@@ -129,14 +137,10 @@ public class ProjectBuilder extends IncrementalProjectBuilder {
 	@Override
 	protected void clean(IProgressMonitor monitor) throws CoreException {
 		try {
-			clean(getProject(), monitor);
+			ImplActivator.clean(getProject(), monitor);
 		} catch (IOException e) {
 			throw new CoreException(new Status(IStatus.ERROR, Activator.PLUGIN_ID, e.toString()));
 		}
-	}
-
-	public static void clean(IProject project, IProgressMonitor monitor) throws CoreException, IOException {
-		ImplActivator.clean(project, monitor);
 	}
 
 	public static void closeProject(IProject project) {

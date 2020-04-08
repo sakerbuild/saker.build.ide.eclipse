@@ -41,6 +41,9 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.bindings.Trigger;
+import org.eclipse.jface.bindings.TriggerSequence;
+import org.eclipse.jface.bindings.keys.KeyStroke;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.widgets.Menu;
@@ -57,9 +60,11 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.console.IConsole;
 import org.eclipse.ui.console.IConsoleView;
 import org.eclipse.ui.ide.IDE;
+import org.eclipse.ui.keys.IBindingService;
 
 import saker.build.file.path.SakerPath;
 import saker.build.ide.configuration.IDEConfiguration;
+import saker.build.ide.eclipse.handlers.BuildProjectCommandHandler;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.scripting.ScriptParsingFailedException;
 import saker.build.thirdparty.saker.util.ObjectUtils;
@@ -229,18 +234,55 @@ public class TargetsMenuContribution extends ContributionItem {
 							return;
 						}
 						for (String target : scripttargets) {
-							manager.add(new Action(target) {
+							String acc = getBuildTargetActionAccelerator(sakereclipseproject, buildfilepath, target);
+							String actionlabel = target;
+							if (acc != null) {
+								actionlabel += "\t" + acc;
+							}
+							Action runbuildaction = new Action(actionlabel) {
 								@Override
 								public void run() {
 									ProjectBuilder.buildAsync(sakereclipseproject, buildfilepath, target);
 								}
-							});
+							};
+							manager.add(runbuildaction);
 						}
 					}
+
+					private String getBuildTargetActionAccelerator(EclipseSakerIDEProject sakereclipseproject,
+							SakerPath buildfilepath, String target) {
+						if (sakereclipseproject.isLatestBuildScriptTargetEquals(buildfilepath, target)) {
+							IWorkbench workbench = PlatformUI.getWorkbench();
+							IBindingService bindingservice = workbench.getService(IBindingService.class);
+							if (bindingservice != null) {
+								TriggerSequence[] bindings = bindingservice
+										.getActiveBindingsFor(BuildProjectCommandHandler.COMMAND_ID);
+								if (bindings != null && bindings.length > 0) {
+									return bindingToString(bindings[0]);
+								}
+							}
+						}
+						return null;
+					}
+
 				});
 				targetmenu.fill(menu, -1);
 			}
 		}
+	}
+
+	private static String bindingToString(TriggerSequence triggerSequence) {
+		StringBuilder sb = new StringBuilder();
+		for (Trigger t : triggerSequence.getTriggers()) {
+			if (t instanceof KeyStroke) {
+				KeyStroke ks = (KeyStroke) t;
+				if (sb.length() > 0) {
+					sb.append(", ");
+				}
+				sb.append(ks.format());
+			}
+		}
+		return sb.toString();
 	}
 
 	private static void addIDEConfigurationMenu(EclipseSakerIDEProject sakereclipseproject, Menu menu) {

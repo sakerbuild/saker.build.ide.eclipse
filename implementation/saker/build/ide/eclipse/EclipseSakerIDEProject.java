@@ -373,6 +373,10 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		sakerProject.removeProjectResourceListener(listener);
 	}
 
+	public SakerIDEProject getSakerProject() {
+		return sakerProject;
+	}
+
 	public void addProjectPropertiesChangeListener(ProjectPropertiesChangeListener listener) {
 		if (listener == null) {
 			return;
@@ -613,6 +617,28 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		withLatestOrChosenBuildTarget((scriptpath, target) -> {
 			ProjectBuilder.buildAsync(this, scriptpath, target);
 		});
+	}
+
+	public boolean isLatestBuildScriptTargetEquals(SakerPath scriptpath, String target) {
+		try {
+			String lastscriptpath = ideProject.getPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME);
+			if (lastscriptpath == null) {
+				return false;
+			}
+			if (!SakerPath.valueOf(lastscriptpath).equals(scriptpath)) {
+				return false;
+			}
+			String lasttargetname = ideProject.getPersistentProperty(LAST_BUILD_TARGET_NAME_QUALIFIED_NAME);
+			if (lasttargetname == null) {
+				return false;
+			}
+			if (!lasttargetname.equals(target)) {
+				return false;
+			}
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
 	}
 
 	private void withLatestOrChosenBuildTarget(BiConsumer<SakerPath, String> consumer) {

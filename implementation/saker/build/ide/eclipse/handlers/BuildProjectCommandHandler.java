@@ -32,6 +32,8 @@ import saker.build.ide.eclipse.ImplActivator;
 
 public class BuildProjectCommandHandler extends AbstractHandler {
 
+	public static final String COMMAND_ID = "saker.build.ide.eclipse.commands.BuildProjectCommand";
+
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		IProject project = getProject(event);
