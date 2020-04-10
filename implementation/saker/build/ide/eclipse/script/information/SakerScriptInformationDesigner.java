@@ -15,10 +15,16 @@
  */
 package saker.build.ide.eclipse.script.information;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
 
 import saker.build.ide.eclipse.Activator;
 import saker.build.ide.eclipse.extension.script.information.IScriptInformationDesigner;
@@ -28,22 +34,37 @@ import saker.build.thirdparty.saker.util.io.ByteArrayRegion;
 import saker.build.thirdparty.saker.util.io.StreamUtils;
 
 public class SakerScriptInformationDesigner implements IScriptInformationDesigner {
-	private static final String ICON_SOURCE_TASK = createIconSource("icons/task@2.png");
-	private static final String ICON_SOURCE_VARIABLE = createIconSource("icons/var@2.png");
-	private static final String ICON_SOURCE_TARGET_INPUT_PARAMETER = createIconSource("icons/inparam@2.png");
-	private static final String ICON_SOURCE_TARGET_OUTPUT_PARAMETER = createIconSource("icons/outparam@2.png");
-	private static final String ICON_SOURCE_BUILD_TARGET = createIconSource("icons/target@2.png");
+	private static final String ICON_SOURCE_TASK = createIconSource("icons/task@2x.png");
+	private static final String ICON_SOURCE_VARIABLE = createIconSource("icons/var@2x.png");
+	private static final String ICON_SOURCE_TARGET_INPUT_PARAMETER = createIconSource("icons/inparam@2x.png");
+	private static final String ICON_SOURCE_TARGET_OUTPUT_PARAMETER = createIconSource("icons/outparam@2x.png");
+	private static final String ICON_SOURCE_BUILD_TARGET = createIconSource("icons/target@2x.png");
+	private static final String ICON_SOURCE_FILE = createIconSource("icons/icon_file@2x.png");
 
-	public static final String INFORMATION_SCHEMA_IDENTIFIER = "saker.script";
-	private static final String INFORMATION_SCHEMA_TASK = INFORMATION_SCHEMA_IDENTIFIER + ".task";
-	private static final String INFORMATION_SCHEMA_TASK_PARAMETER = INFORMATION_SCHEMA_IDENTIFIER + ".task_parameter";
-	private static final String INFORMATION_SCHEMA_ENUM = INFORMATION_SCHEMA_IDENTIFIER + ".enum";
-	private static final String INFORMATION_SCHEMA_VARIABLE = INFORMATION_SCHEMA_IDENTIFIER + ".var";
-	private static final String INFORMATION_SCHEMA_TARGET_INPUT_PARAMETER = INFORMATION_SCHEMA_IDENTIFIER
+	public static final String INFORMATION_SCHEMA = "saker.script";
+	public static final String INFORMATION_SCHEMA_TASK = INFORMATION_SCHEMA + ".task";
+	public static final String INFORMATION_SCHEMA_TASK_PARAMETER = INFORMATION_SCHEMA + ".task_parameter";
+	public static final String INFORMATION_SCHEMA_ENUM = INFORMATION_SCHEMA + ".enum";
+	public static final String INFORMATION_SCHEMA_VARIABLE = INFORMATION_SCHEMA + ".var";
+	public static final String INFORMATION_SCHEMA_FOREACH_VARIABLE = INFORMATION_SCHEMA + ".foreach_var";
+	public static final String INFORMATION_SCHEMA_TARGET_INPUT_PARAMETER = INFORMATION_SCHEMA
 			+ ".target.input_parameter";
-	private static final String INFORMATION_SCHEMA_TARGET_OUTPUT_PARAMETER = INFORMATION_SCHEMA_IDENTIFIER
+	public static final String INFORMATION_SCHEMA_TARGET_OUTPUT_PARAMETER = INFORMATION_SCHEMA
 			+ ".target.output_parameter";
-	private static final String INFORMATION_SCHEMA_BUILD_TARGET = INFORMATION_SCHEMA_IDENTIFIER + ".target";
+	public static final String INFORMATION_SCHEMA_BUILD_TARGET = INFORMATION_SCHEMA + ".target";
+	public static final String INFORMATION_SCHEMA_FILE = INFORMATION_SCHEMA + ".file";
+	public static final String INFORMATION_SCHEMA_USER_PARAMETER = INFORMATION_SCHEMA + ".user_parameter";
+	public static final String INFORMATION_SCHEMA_ENVIRONMENT_PARAMETER = INFORMATION_SCHEMA + ".environment_parameter";
+	public static final String INFORMATION_SCHEMA_EXTERNAL_LITERAL = INFORMATION_SCHEMA + ".external_literal";
+
+	public static final String INFORMATION_META_DATA_FILE_TYPE = "file_type";
+	public static final String INFORMATION_META_DATA_FILE_TYPE_FILE = "file";
+	public static final String INFORMATION_META_DATA_FILE_TYPE_BUILD_SCRIPT = "build_script";
+	public static final String INFORMATION_META_DATA_FILE_TYPE_DIRECTORY = "dir";
+
+	private static final String ICON_FOLDER = createPluginIconSource("org.eclipse.ui.ide",
+			"icons/full/obj16/folder.png");
+	private static final String ICON_FILE = createPluginIconSource("org.eclipse.ui", "icons/full/obj16/file_obj.png");
 
 	@Override
 	public void process(IScriptInformationRoot informationroot) {
@@ -73,6 +94,7 @@ public class SakerScriptInformationDesigner implements IScriptInformationDesigne
 		if (entryschema == null) {
 			return;
 		}
+		Map<String, String> schemameta = entry.getSchemaMetaData();
 		switch (entryschema) {
 			case INFORMATION_SCHEMA_TASK: {
 				entry.setIconSource(ICON_SOURCE_TASK);
@@ -94,9 +116,42 @@ public class SakerScriptInformationDesigner implements IScriptInformationDesigne
 				entry.setIconSource(ICON_SOURCE_BUILD_TARGET);
 				break;
 			}
+			case INFORMATION_SCHEMA_FILE: {
+				switch (schemameta.getOrDefault(INFORMATION_META_DATA_FILE_TYPE,
+						INFORMATION_META_DATA_FILE_TYPE_FILE)) {
+					case INFORMATION_META_DATA_FILE_TYPE_DIRECTORY: {
+						entry.setIconSource(ICON_FOLDER);
+						break;
+					}
+					case INFORMATION_META_DATA_FILE_TYPE_BUILD_SCRIPT: {
+						entry.setIconSource(ICON_SOURCE_FILE);
+						break;
+					}
+					case INFORMATION_META_DATA_FILE_TYPE_FILE:
+					default: {
+						entry.setIconSource(ICON_FILE);
+						break;
+					}
+				}
+				break;
+			}
 			default: {
 				break;
 			}
+		}
+	}
+
+	private static String createPluginIconSource(String pluginid, String path) {
+		//as seen in AbstractUIPlugin.imageDescriptorFromPlugin
+		IPath uriPath = new Path("/plugin").append(pluginid).append(path);
+		try {
+			URI uri = new URI("platform", null, uriPath.toString(), null);
+			URL url = uri.toURL();
+			try (InputStream is = url.openStream()) {
+				return createInputStreamIconSurce(is);
+			}
+		} catch (Exception e) {
+			return null;
 		}
 	}
 
@@ -106,10 +161,14 @@ public class SakerScriptInformationDesigner implements IScriptInformationDesigne
 			return null;
 		}
 		try (InputStream is = entry.openStream()) {
-			ByteArrayRegion bytes = StreamUtils.readStreamFully(is);
-			return "data:image/png;base64, " + Base64.getEncoder().encodeToString(bytes.copyOptionally());
+			return createInputStreamIconSurce(is);
 		} catch (Exception e) {
 			return null;
 		}
+	}
+
+	private static String createInputStreamIconSurce(InputStream is) throws IOException {
+		ByteArrayRegion bytes = StreamUtils.readStreamFully(is);
+		return "data:image/png;base64, " + Base64.getEncoder().encodeToString(bytes.copyOptionally());
 	}
 }

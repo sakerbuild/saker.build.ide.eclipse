@@ -30,6 +30,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
@@ -126,6 +127,7 @@ import saker.build.ide.support.persist.StructuredObjectInput;
 import saker.build.ide.support.persist.StructuredObjectOutput;
 import saker.build.ide.support.persist.XMLStructuredReader;
 import saker.build.ide.support.persist.XMLStructuredWriter;
+import saker.build.ide.support.properties.IDEPluginProperties;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.PropertiesValidationException;
@@ -137,6 +139,7 @@ import saker.build.runtime.execution.BuildUserPromptHandler;
 import saker.build.runtime.execution.ExecutionParametersImpl;
 import saker.build.runtime.execution.ExecutionProgressMonitor;
 import saker.build.runtime.execution.SakerLog.CommonExceptionFormat;
+import saker.build.runtime.execution.SakerLog.ExceptionFormat;
 import saker.build.runtime.execution.SecretInputReader;
 import saker.build.runtime.params.ExecutionPathConfiguration;
 import saker.build.scripting.ScriptParsingFailedException;
@@ -1003,10 +1006,23 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				if (result != null) {
 					ScriptPositionedExceptionView posexcview = result.getPositionedExceptionView();
 					if (posexcview != null) {
+						ExceptionFormat exceptionformat = CommonExceptionFormat.DEFAULT_FORMAT;
+						IDEPluginProperties pluginprops = eclipseSakerPlugin.getIDEPluginProperties();
+						if (pluginprops != null) {
+							String propexcformat = pluginprops.getExceptionFormat();
+							if (propexcformat != null) {
+								//convert to upper case to attempt to handle possible case differences
+								try {
+									exceptionformat = CommonExceptionFormat
+											.valueOf(propexcformat.toUpperCase(Locale.ENGLISH));
+								} catch (IllegalArgumentException ignored) {
+								}
+							}
+						}
+
 						consoleaccessor.stackTrace = posexcview;
-						//TODO make exception format configureable
 						TaskUtils.printTaskExceptionsOmitTransitive(posexcview, new PrintStream(err),
-								executionworkingdir, CommonExceptionFormat.DEFAULT_FORMAT);
+								executionworkingdir, exceptionformat);
 					}
 				}
 				IOException streamscloseexc = IOUtils.closeExc(out, err);

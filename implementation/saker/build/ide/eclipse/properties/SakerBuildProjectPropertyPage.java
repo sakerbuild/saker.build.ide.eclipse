@@ -150,7 +150,7 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 		return composite;
 	}
 
-	private static void addLabelWithText(Composite composite, String text) {
+	public static void addLabelWithText(Composite composite, String text) {
 		Label label = new Label(composite, SWT.NONE);
 		label.setText(text);
 	}

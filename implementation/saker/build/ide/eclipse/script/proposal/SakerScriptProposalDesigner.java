@@ -15,6 +15,11 @@
  */
 package saker.build.ide.eclipse.script.proposal;
 
+import java.util.Map;
+
+import org.eclipse.swt.graphics.Image;
+
+import saker.build.ide.eclipse.Activator;
 import saker.build.ide.eclipse.BuildFileEditor;
 import saker.build.ide.eclipse.extension.script.proposal.IScriptProposalDesigner;
 import saker.build.ide.eclipse.extension.script.proposal.IScriptProposalEntry;
@@ -24,7 +29,7 @@ import saker.build.ide.eclipse.script.outline.SakerScriptOutlineDesigner;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class SakerScriptProposalDesigner implements IScriptProposalDesigner {
-	public static final String PROPOSAL_SCHEMA_IDENTIFIER = "saker.script";
+	public static final String PROPOSAL_SCHEMA = "saker.script";
 	private static final String PROPOSAL_META_DATA_TYPE = "type";
 	private static final String PROPOSAL_META_DATA_TYPE_FILE = "file";
 	private static final String PROPOSAL_META_DATA_TYPE_ENUM = "enum";
@@ -35,13 +40,25 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner {
 	private static final String PROPOSAL_META_DATA_TYPE_USER_PARAMETER = "user_parameter";
 	private static final String PROPOSAL_META_DATA_TYPE_ENVIRONMENT_PARAMETER = "environment_parameter";
 	private static final String PROPOSAL_META_DATA_TYPE_VARIABLE = "variable";
+	private static final String PROPOSAL_META_DATA_TYPE_FOREACH_VARIABLE = "foreach_variable";
 	private static final String PROPOSAL_META_DATA_TYPE_STATIC_VARIABLE = "static_variable";
 	private static final String PROPOSAL_META_DATA_TYPE_GLOBAL_VARIABLE = "global_variable";
 	private static final String PROPOSAL_META_DATA_TYPE_TASK_QUALIFIER = "task_qualifier";
+	private static final String PROPOSAL_META_DATA_TYPE_LITERAL = "literal";
+	private static final String PROPOSAL_META_DATA_TYPE_BUILD_TARGET = "build_target";
 
 	private static final String PROPOSAL_META_DATA_FILE_TYPE = "file_type";
 	private static final String PROPOSAL_META_DATA_FILE_TYPE_FILE = "file";
+	private static final String PROPOSAL_META_DATA_FILE_TYPE_BUILD_SCRIPT = "build_script";
 	private static final String PROPOSAL_META_DATA_FILE_TYPE_DIRECTORY = "dir";
+
+	public static final Image IMG_FOLDER = Activator.getImageFromPlugin("org.eclipse.ui.ide",
+			"icons/full/obj16/folder.png");
+	public static final Image IMG_FILE = Activator.getImageFromPlugin("org.eclipse.ui",
+			"icons/full/obj16/file_obj.png");
+
+	public static final Image IMG_BUILD_SCRIPT = Activator.getImageFromPlugin(Activator.PLUGIN_ID,
+			"icons/icon_file.png");
 
 	@Override
 	public void process(IScriptProposalsRoot proposalsroot) {
@@ -51,7 +68,7 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner {
 			if (proposal == null) {
 				continue;
 			}
-			if (!PROPOSAL_SCHEMA_IDENTIFIER.equals(proposal.getSchemaIdentifier())) {
+			if (!PROPOSAL_SCHEMA.equals(proposal.getSchemaIdentifier())) {
 				continue;
 			}
 			processProposal(proposal, darktheme);
@@ -59,11 +76,20 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner {
 	}
 
 	private static void processProposal(IScriptProposalEntry proposal, boolean darktheme) {
-		String type = ObjectUtils.getMapValue(proposal.getSchemaMetaData(), PROPOSAL_META_DATA_TYPE);
+		Map<String, String> schemameta = proposal.getSchemaMetaData();
+		String type = ObjectUtils.getMapValue(schemameta, PROPOSAL_META_DATA_TYPE);
 		if (type == null) {
 			return;
 		}
 		switch (type) {
+			case PROPOSAL_META_DATA_TYPE_BUILD_TARGET: {
+				proposal.setProposalImage(SakerScriptOutlineDesigner.getImgTarget(darktheme));
+				break;
+			}
+			case PROPOSAL_META_DATA_TYPE_LITERAL: {
+				proposal.setProposalImage(SakerScriptOutlineDesigner.getImgStringliteral(darktheme));
+				break;
+			}
 			case PROPOSAL_META_DATA_TYPE_VARIABLE:
 			case PROPOSAL_META_DATA_TYPE_STATIC_VARIABLE:
 			case PROPOSAL_META_DATA_TYPE_GLOBAL_VARIABLE: {
@@ -72,6 +98,24 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner {
 			}
 			case PROPOSAL_META_DATA_TYPE_TASK: {
 				proposal.setProposalImage(SakerScriptOutlineDesigner.getImgTask(darktheme));
+				break;
+			}
+			case PROPOSAL_META_DATA_TYPE_FILE: {
+				switch (schemameta.getOrDefault(PROPOSAL_META_DATA_FILE_TYPE, PROPOSAL_META_DATA_FILE_TYPE_FILE)) {
+					case PROPOSAL_META_DATA_FILE_TYPE_DIRECTORY: {
+						proposal.setProposalImage(IMG_FOLDER);
+						break;
+					}
+					case PROPOSAL_META_DATA_FILE_TYPE_BUILD_SCRIPT: {
+						proposal.setProposalImage(IMG_BUILD_SCRIPT);
+						break;
+					}
+					case PROPOSAL_META_DATA_FILE_TYPE_FILE:
+					default: {
+						proposal.setProposalImage(IMG_FILE);
+						break;
+					}
+				}
 				break;
 			}
 			default: {

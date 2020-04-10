@@ -16,30 +16,23 @@
 package saker.build.ide.eclipse;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.ToolBarManager;
 import org.eclipse.jface.resource.ColorRegistry;
 import org.eclipse.jface.text.AbstractInformationControl;
@@ -59,7 +52,6 @@ import org.eclipse.jface.text.ITextHoverExtension2;
 import org.eclipse.jface.text.ITextListener;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.text.ITextViewer;
-import org.eclipse.jface.text.ITextViewerExtension;
 import org.eclipse.jface.text.ITypedRegion;
 import org.eclipse.jface.text.Region;
 import org.eclipse.jface.text.TextEvent;
@@ -85,7 +77,6 @@ import org.eclipse.jface.text.reconciler.DirtyRegion;
 import org.eclipse.jface.text.reconciler.IReconciler;
 import org.eclipse.jface.text.reconciler.IReconcilingStrategy;
 import org.eclipse.jface.text.source.ISourceViewer;
-import org.eclipse.jface.text.source.IVerticalRuler;
 import org.eclipse.jface.text.source.SourceViewerConfiguration;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
@@ -103,10 +94,8 @@ import org.eclipse.swt.browser.Browser;
 import org.eclipse.swt.browser.LocationEvent;
 import org.eclipse.swt.browser.LocationListener;
 import org.eclipse.swt.custom.StyleRange;
-import org.eclipse.swt.custom.VerifyKeyListener;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
-import org.eclipse.swt.events.VerifyEvent;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
@@ -139,13 +128,13 @@ import saker.build.ide.eclipse.script.outline.EclipseScriptOutlineRoot;
 import saker.build.ide.eclipse.script.proposal.EclipseScriptProposalEntry;
 import saker.build.ide.eclipse.script.proposal.EclipseScriptProposalRoot;
 import saker.build.ide.support.ExceptionDisplayer;
-import saker.build.ide.support.SakerIDEPlugin.PluginResourceListener;
-import saker.build.ide.support.SakerIDEProject.ProjectResourceListener;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.ui.BaseScriptInformationRoot;
+import saker.build.ide.support.ui.ScriptEditorModel;
+import saker.build.ide.support.ui.ScriptEditorModel.ModelUpdateListener;
+import saker.build.ide.support.ui.ScriptEditorModel.TokenState;
 import saker.build.runtime.environment.ForwardingImplSakerEnvironment;
 import saker.build.runtime.environment.SakerEnvironment;
-import saker.build.runtime.environment.SakerEnvironmentImpl;
 import saker.build.runtime.params.ExecutionPathConfiguration;
 import saker.build.runtime.params.ExecutionScriptConfiguration;
 import saker.build.scripting.ScriptParsingFailedException;
@@ -162,7 +151,6 @@ import saker.build.scripting.model.ScriptModellingEnvironment;
 import saker.build.scripting.model.ScriptModellingEnvironmentConfiguration;
 import saker.build.scripting.model.ScriptStructureOutline;
 import saker.build.scripting.model.ScriptSyntaxModel;
-import saker.build.scripting.model.ScriptToken;
 import saker.build.scripting.model.ScriptTokenInformation;
 import saker.build.scripting.model.SimplePartitionedTextContent;
 import saker.build.scripting.model.SimpleScriptModellingEnvironmentConfiguration;
@@ -175,20 +163,16 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
 import saker.build.thirdparty.saker.util.io.ByteSource;
 import saker.build.thirdparty.saker.util.io.ResourceCloser;
-import saker.build.thirdparty.saker.util.io.UnsyncByteArrayInputStream;
 import saker.build.thirdparty.saker.util.io.function.IOSupplier;
 import saker.build.thirdparty.saker.util.thread.ThreadUtils;
 
-public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
+public class BuildFileEditor extends TextEditor implements ModelUpdateListener {
 	public static final String ID = "saker.build.ide.eclipse.script.editor";
 
 	//IWorkbenchThemeConstants.ACTIVE_TAB_BG_END
 	private static final String BACKGROUND_COLOR_REGISTRY_PROPERTY_NAME = "org.eclipse.ui.workbench.ACTIVE_TAB_BG_END";
 
-	private static final int UPDATE_JOB_INPUT_DELAY = 500;
 	private static final int OUTLINE_JOB_INPUT_DELAY = 200;
-
-	private static final Image OUTLINE_IMAGE = Activator.getImageDescriptor("icons/icon.png").createImage();
 
 	private static class OutlineElement {
 		protected OutlineElement parent;
@@ -316,6 +300,9 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 					OutlineElement be = (OutlineElement) b;
 					StructureOutlineEntry aentry = ae.element.getEntry();
 					StructureOutlineEntry bentry = be.element.getEntry();
+					if (aentry == bentry) {
+						return true;
+					}
 					if (aentry.getOffset() != bentry.getOffset()) {
 						return false;
 					}
@@ -339,13 +326,12 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 			});
 			viewer.setInput("dummy");
 			outline = this;
-			reschedule(outlineUpdater);
+			rescheduleOutlineUpdate();
 		}
 
 		@Override
 		public void dispose() {
 			outline = null;
-			cancel(outlineUpdater);
 			super.dispose();
 		}
 
@@ -353,7 +339,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		public Object[] getElements(Object inputElement) {
 			EclipseScriptOutlineRoot root;
 			try {
-				ScriptSyntaxModel m = BuildFileEditor.this.model;
+				ScriptSyntaxModel m = editorModel.getModelMaybeOutOfDate();
 				if (m == null) {
 					return ObjectUtils.EMPTY_OBJECT_ARRAY;
 				}
@@ -418,29 +404,44 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 			return !tree.getChildren().isEmpty();
 		}
 
-		private void updateContent(ScriptSyntaxModel model) {
+		protected void updateContent() {
 			try {
 				ignoreSelectionListener++;
 
 				TreeViewer treeviewer = getTreeViewer();
 				treeviewer.refresh();
-				TreeItem[] items = treeviewer.getTree().getItems();
-				OutlineElement[] elems = new OutlineElement[items.length];
-				for (int i = 0; i < elems.length; i++) {
-					elems[i] = (OutlineElement) items[i].getData();
-				}
+				updateSelectionImpl(treeviewer);
+			} finally {
+				ignoreSelectionListener--;
+			}
+		}
 
-				ISelection sel = BuildFileEditor.this.doGetSelection();
-				if (sel instanceof ITextSelection) {
-					ITextSelection textselection = (ITextSelection) sel;
-					int offset = textselection.getOffset();
-					int length = textselection.getLength();
-					OutlineElement found = findSelectionOutlineElement(elems, offset, length);
-					if (found != null) {
-						treeviewer.setSelection(new StructuredSelection(found));
-						treeviewer.reveal(found);
-					}
+		private void updateSelectionImpl(TreeViewer treeviewer) {
+			TreeItem[] items = treeviewer.getTree().getItems();
+			OutlineElement[] elems = new OutlineElement[items.length];
+			for (int i = 0; i < elems.length; i++) {
+				elems[i] = (OutlineElement) items[i].getData();
+			}
+
+			ISelection sel = BuildFileEditor.this.doGetSelection();
+			if (sel instanceof ITextSelection) {
+				ITextSelection textselection = (ITextSelection) sel;
+				int offset = textselection.getOffset();
+				int length = textselection.getLength();
+				OutlineElement found = findSelectionOutlineElement(elems, offset, length);
+				if (found != null) {
+					treeviewer.setSelection(new StructuredSelection(found));
+					treeviewer.reveal(found);
 				}
+			}
+		}
+
+		protected void updateSelection() {
+			try {
+				ignoreSelectionListener++;
+
+				TreeViewer treeviewer = getTreeViewer();
+				updateSelectionImpl(treeviewer);
 			} finally {
 				ignoreSelectionListener--;
 			}
@@ -606,7 +607,7 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 
 		}
 
-		private String generateInformationHtml(Object input, Color bgcol) {
+		private static String generateInformationHtml(Object input, Color bgcol) {
 			List<EclipseScriptInformationEntry> entries;
 			if (input instanceof PartitionedTextContent) {
 				input = EclipseScriptInformationRoot.create((PartitionedTextContent) input);
@@ -814,115 +815,18 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		}
 	}
 
-//	private class ChangeEventUpdaterJob extends Job {
-//		private Configuration configuration;
-//
-//		private final AtomicReference<ITextViewer> textViewer = new AtomicReference<>();
-//
-//		public ChangeEventUpdaterJob(Configuration configuration) {
-//			super("Processing file changes");
-//			this.configuration = configuration;
-//			setPriority(Job.INTERACTIVE);
-//			setSystem(true);
-//		}
-//
-//		@Override
-//		protected IStatus run(IProgressMonitor monitor) {
-//			System.out.println("BuildFileEditor.changeEventProcessorJob.new Job() {...}.run() processing events");
-//
-//			ArrayList<TextRegionChange> events;
-//			synchronized (unprocessedChangeEvents) {
-//				events = new ArrayList<>(unprocessedChangeEvents);
-//				unprocessedChangeEvents.clear();
-//			}
-//			ScriptSyntaxModel model = BuildFileEditor.this.model;
-//			if (model == null) {
-//				return Status.OK_STATUS;
-//			}
-//			try {
-//				ITextViewer textviewer = this.textViewer.getAndSet(null);
-//				if (textviewer != null) {
-//					//updating cannot be cancelled
-//					model.updateModel(events, BuildFileEditor.this::getContentInputStream, ProgressMonitor.nullMonitor());
-//				}
-//				//only update representation if successfully updated the model
-//				OutlinePage outlinepage = outline;
-//				Display.getDefault().asyncExec(() -> {
-//					if (textviewer != null) {
-//						TextPresentation tp = new TextPresentation(1000);
-//						configuration.createPresentation(tp, null);
-//						textviewer.changeTextPresentation(tp, false);
-//					}
-//					if (outlinepage != null) {
-//						outlinepage.updateContent(model);
-//					}
-//				});
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//				if (monitor.isCanceled()) {
-//					return Status.CANCEL_STATUS;
-//				}
-//			}
-//			return Status.OK_STATUS;
-//		}
-//
-//		public void rescheduleUpdate(ITextViewer textviewer, long delay) {
-//			this.textViewer.set(textviewer);
-//			cancel();
-//			schedule(delay);
-//		}
-//
-//		public void rescheduleNonUpdate(long delay) {
-//			cancel();
-//			schedule(delay);
-//		}
-//
-//		public void rescheduleCursorChange(int cursorposition, long delay) {
-//
-//		}
-//	}
-
 	private class BuildFileTextHover implements ITextHover, ITextHoverExtension, ITextHoverExtension2 {
 		@Override
 		public Object getHoverInfo2(ITextViewer textViewer, IRegion hoverRegion) {
-			ScriptSyntaxModel m = model;
+			ScriptSyntaxModel m = getUpdatedModel();
 			if (m == null) {
 				return null;
 			}
-			int offset = hoverRegion.getOffset();
-			int hoverlen = hoverRegion.getLength();
 			int hoveroffset = hoverRegion.getOffset();
-			Iterator<? extends ScriptToken> it = m.getTokens(hoveroffset, hoverlen).iterator();
-			while (it.hasNext()) {
-				ScriptToken token = it.next();
-				int tokenoffset = token.getOffset();
-				int tokenlen = token.getLength();
-				int tokenendoffset = tokenoffset + tokenlen;
-				if (tokenoffset > offset || tokenendoffset < offset) {
-					continue;
-				}
-				ScriptTokenInformation tokeninfo = m.getTokenInformation(token);
-				if (tokeninfo != null) {
-					PartitionedTextContent description = tokeninfo.getDescription();
-					if (description != null) {
-						if (tokenendoffset == offset) {
-							//we should prefer the next token if it starts at the offset as the region
-							if (it.hasNext()) {
-								ScriptToken ntoken = it.next();
-								if (ntoken.getOffset() == offset) {
-									ScriptTokenInformation ntokeninfo = m.getTokenInformation(ntoken);
-									if (ntokeninfo != null) {
-										PartitionedTextContent ndescription = ntokeninfo.getDescription();
-										if (ndescription != null) {
-											return tokeninfo;
-										}
-									}
-								}
-							}
-						}
-						return tokeninfo;
-					}
-				}
+			int hoverlen = hoverRegion.getLength();
+			ScriptTokenInformation tokeninfo = editorModel.getTokenInformationAtPosition(hoveroffset, hoverlen);
+			if (tokeninfo != null) {
+				return tokeninfo;
 			}
 			//empty partition to display no information
 			return new SimplePartitionedTextContent(new SimpleTextPartition(null, null, null));
@@ -1030,10 +934,6 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 
 			@Override
 			public void install(ITextViewer viewer) {
-				ScriptSyntaxModel model = BuildFileEditor.this.model;
-				if (model != null) {
-					model.invalidateModel();
-				}
 				this.textViewer = viewer;
 				viewer.invalidateTextPresentation();
 				this.textViewer.addTextListener(this);
@@ -1043,8 +943,6 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 			public void uninstall() {
 				this.textViewer.removeTextListener(this);
 				this.textViewer = null;
-
-				cancel(modelUpdaterRunnable);
 			}
 
 			@Override
@@ -1059,27 +957,14 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 
 			@Override
 			public void textChanged(TextEvent event) {
-				ScriptSyntaxModel model = BuildFileEditor.this.model;
-				if (model == null
-//						|| event.getDocumentEvent() == null
-				) {
-					//if document event is null, then it is a visual change only
-					return;
-				}
 				TextRegionChange dataevent = new TextRegionChange(event.getOffset(), event.getLength(),
 						event.getText());
+				editorModel.textChange(dataevent);
 
-				//reschedule will be at updateContentDependentActions
-				synchronized (updateLock) {
-					unprocessedChangeEvents.add(dataevent);
-					textContent.replace(dataevent.getOffset(), dataevent.getOffset() + dataevent.getLength(),
-							Objects.toString(dataevent.getText(), ""));
-				}
 				System.out.println("BuildFileEditor.textChanged() " + dataevent.getOffset() + " ("
 						+ dataevent.getLength() + ") -> " + StringUtils.length(dataevent.getText())
 //								+ " " + dataevent.replacedText + " -> " + dataevent.text
 				);
-				reschedule(modelUpdaterRunnable, UPDATE_JOB_INPUT_DELAY);
 			}
 		}
 
@@ -1112,23 +997,9 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		private BuildFileContentAssistant contentAssistant;
 		private BuildFileTextHover textHover = new BuildFileTextHover();
 
-		private Entry<ScriptSyntaxModel, Map<String, Set<? extends TokenStyle>>> modelCachedStyles = null;
-
 //		private final ChangeEventUpdaterJob changeEventProcessorJob = new ChangeEventUpdaterJob(this);
 
 		public Configuration() {
-		}
-
-		private ScriptToken getTokenForRegion(IRegion region) {
-			ScriptSyntaxModel model = BuildFileEditor.this.model;
-			Iterator<? extends ScriptToken> it = model.getTokens(region.getOffset(), region.getLength()).iterator();
-			while (it.hasNext()) {
-				ScriptToken token = it.next();
-				if (token.getOffset() == region.getOffset() && token.getLength() == region.getLength()) {
-					return token;
-				}
-			}
-			return null;
 		}
 
 		@Override
@@ -1137,80 +1008,44 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		}
 
 		public void createPresentation(TextPresentation presentation, ITypedRegion damage) {
-			ScriptSyntaxModel model = BuildFileEditor.this.model;
-			if (model == null) {
+			List<TokenState> tokenstates = editorModel.getCurrentTokenState();
+			if (ObjectUtils.isNullOrEmpty(tokenstates)) {
 				return;
 			}
-			System.out.println("BuildFileEditor.Configuration.createPresentation() " + presentation + " - " + damage);
-			long nanos = System.nanoTime();
-//			System.out.println("BuildFileEditor.Configuration.createPresentation() " + model);
+			for (TokenState token : tokenstates) {
+				Color fg = null;
+				Color bg = null;
 
-//			int debugi = 0;
-
-			int offset = 0;
-			int length = 0;
-			if (damage != null) {
-				offset = damage.getOffset();
-				length = damage.getLength();
-			}
-
-			Map<String, Set<? extends TokenStyle>> styles;
-			if (modelCachedStyles == null || modelCachedStyles.getKey() != model) {
-				styles = model.getTokenStyles();
-				modelCachedStyles = ImmutableUtils.makeImmutableMapEntry(model, styles);
-			} else {
-				styles = modelCachedStyles.getValue();
-			}
-
-			Iterator<? extends ScriptToken> it = model.getTokens(offset, length).iterator();
-			while (it.hasNext()) {
-				ScriptToken token = it.next();
-				if (token.isEmpty()) {
-					continue;
-				}
-
-//				if (true) {
-//					boolean white = debugi++ % 2 == 0;
-//					Color fg = white ? getColor(0xFFFFFFFF) : getColor(0xFF000000);
-//					Color bg = white ? getColor(0xFF000000) : getColor(0xFFFFFFFF);
-//					StyleRange range = new StyleRange(token.getOffset(), token.getLength(), fg, bg);
-//					presentation.addStyleRange(range);
-//					continue;
-//				}
-
-				TokenStyle style = findAppropriateStyleForTheme(styles.get(token.getType()), currentTokenTheme);
+				TokenStyle style = token.getStyle();
+				int bgc = TokenStyle.COLOR_UNSPECIFIED;
+				int fgc = TokenStyle.COLOR_UNSPECIFIED;
+				int s = 0;
 				if (style != null) {
-					Color fg = null;
-					Color bg = null;
-					int fgc = style.getForegroundColor();
-					int bgc = style.getBackgroundColor();
-					int s = style.getStyle();
+					fgc = style.getForegroundColor();
+					bgc = style.getBackgroundColor();
+					s = style.getStyle();
 					if (fgc != TokenStyle.COLOR_UNSPECIFIED) {
 						fg = getColor(fgc);
 					}
-//					if (selectedtoken != null && token.getType().equals(selectedtoken.getType())) {
-//						bgc = 0xFF808080;
-//					}
-					if (bgc != TokenStyle.COLOR_UNSPECIFIED) {
-						bg = getColor(bgc);
-					}
-					StyleRange range = new StyleRange(token.getOffset(), token.getLength(), fg, bg);
-					if (((s & TokenStyle.STYLE_ITALIC) == TokenStyle.STYLE_ITALIC)) {
-						range.fontStyle |= SWT.ITALIC;
-					}
-					if (((s & TokenStyle.STYLE_BOLD) == TokenStyle.STYLE_BOLD)) {
-						range.fontStyle |= SWT.BOLD;
-					}
-					if (((s & TokenStyle.STYLE_UNDERLINE) == TokenStyle.STYLE_UNDERLINE)) {
-						range.underline = true;
-					}
-					if (((s & TokenStyle.STYLE_STRIKETHROUGH) == TokenStyle.STYLE_STRIKETHROUGH)) {
-						range.strikeout = true;
-					}
-					presentation.addStyleRange(range);
 				}
+				StyleRange range = new StyleRange(token.getOffset(), token.getLength(), fg, bg);
+				if (bgc != TokenStyle.COLOR_UNSPECIFIED) {
+					bg = getColor(bgc);
+				}
+				if (((s & TokenStyle.STYLE_ITALIC) == TokenStyle.STYLE_ITALIC)) {
+					range.fontStyle |= SWT.ITALIC;
+				}
+				if (((s & TokenStyle.STYLE_BOLD) == TokenStyle.STYLE_BOLD)) {
+					range.fontStyle |= SWT.BOLD;
+				}
+				if (((s & TokenStyle.STYLE_UNDERLINE) == TokenStyle.STYLE_UNDERLINE)) {
+					range.underline = true;
+				}
+				if (((s & TokenStyle.STYLE_STRIKETHROUGH) == TokenStyle.STYLE_STRIKETHROUGH)) {
+					range.strikeout = true;
+				}
+				presentation.addStyleRange(range);
 			}
-//			System.out.println("BuildFileEditor.Configuration.createPresentation() " + (System.nanoTime() - nanos) / 1_000_000 + " ms");
 		}
 
 		@Override
@@ -1253,35 +1088,6 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 
 		private Color getColor(int c) {
 			return typecolors.computeIfAbsent(c, this::makeColor);
-		}
-
-		private TokenStyle findAppropriateStyleForTheme(Set<? extends TokenStyle> styles, int theme) {
-			if (styles == null) {
-				return null;
-			}
-			Iterator<? extends TokenStyle> it = styles.iterator();
-			if (!it.hasNext()) {
-				return null;
-			}
-
-			TokenStyle first = it.next();
-			TokenStyle notheme = null;
-			if (((first.getStyle() & theme) == theme)) {
-				return first;
-			}
-			if (((first.getStyle() & TokenStyle.THEME_MASK) == 0)) {
-				notheme = first;
-			}
-			while (it.hasNext()) {
-				TokenStyle ts = it.next();
-				if (((ts.getStyle() & theme) == theme)) {
-					return ts;
-				}
-				if (((ts.getStyle() & TokenStyle.THEME_MASK) == 0)) {
-					notheme = ts;
-				}
-			}
-			return notheme == null ? first : notheme;
 		}
 
 		@Override
@@ -1354,7 +1160,6 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 				//shouldnt occurr
 				e.printStackTrace();
 			}
-			reschedule(modelUpdaterRunnable);
 		}
 
 		@Override
@@ -1571,194 +1376,23 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		}
 	}
 
-	private abstract static class TimedRunnable implements Runnable {
-		private static final AtomicIntegerFieldUpdater<BuildFileEditor.TimedRunnable> AIFU_state = AtomicIntegerFieldUpdater
-				.newUpdater(BuildFileEditor.TimedRunnable.class, "state");
-
-		public static final int STATE_NONE = 0;
-		public static final int STATE_RUNNING = 1;
-		public static final int STATE_FINISHED = 2;
-
-		private volatile int state = STATE_NONE;
-
-		private static final AtomicInteger IdCounter = new AtomicInteger(0);
-
-		private volatile long executeTime;
-		private final int id;
-
-		public TimedRunnable() {
-			this.id = IdCounter.getAndIncrement();
-		}
-
-		public int getState() {
-			return state;
-		}
-
-		protected abstract void runImpl();
-
-		@Override
-		public final void run() {
-			state = STATE_RUNNING;
-			try {
-				runImpl();
-			} finally {
-				synchronized (this) {
-					if (AIFU_state.compareAndSet(this, STATE_RUNNING, STATE_FINISHED)) {
-						//we were rescheduled
-						notifyAll();
-					}
-				}
-			}
-		}
-
-		public boolean isFinished() {
-			return state == STATE_FINISHED;
-		}
-
-		public synchronized void notifyUnfinished() {
-			notifyAll();
-		}
-
-		public void joinFinish() throws InterruptedException {
-			synchronized (this) {
-				if (isFinished()) {
-					return;
-				}
-				wait();
-			}
-		}
-
-		public void rescheduled() {
-			state = STATE_NONE;
-		}
-
-		public void setDelay(long delay) {
-			this.executeTime = nanoMillis() + delay;
-		}
-
-		public void setInstant() {
-			//set the execution time to in the past
-			setDelay(-1000);
-		}
-
-		public static int compareTo(TimedRunnable l, TimedRunnable r) {
-			int cmp = Long.compare(l.executeTime, r.executeTime);
-			if (cmp != 0) {
-				return cmp;
-			}
-			return Integer.compare(l.id, r.id);
-		}
-	}
-
-	private static final AtomicReferenceFieldUpdater<BuildFileEditor, ScriptSyntaxModel> ARFU_model = AtomicReferenceFieldUpdater
-			.newUpdater(BuildFileEditor.class, ScriptSyntaxModel.class, "model");
-	private volatile ScriptSyntaxModel model;
-
 	private Map<Integer, Color> typecolors = new TreeMap<>();
 
 	private Configuration configuration = new Configuration();
 
 	private OutlinePage outline;
 
-	private NavigableSet<TimedRunnable> updateRunnables = new TreeSet<>(TimedRunnable::compareTo);
-	private Thread updaterThread;
-
-	private StringBuilder textContent = new StringBuilder();
-	private LinkedList<TextRegionChange> unprocessedChangeEvents = new LinkedList<>();
-	private final Object updateLock = new Object();
-
-	private TimedRunnable modelUpdaterRunnable = new TimedRunnable() {
-		@Override
-		protected void runImpl() {
-			ScriptSyntaxModel model = BuildFileEditor.this.model;
-			if (model == null) {
-				return;
-			}
-
-			long nanos = System.nanoTime();
-//			System.out.println("BuildFileEditor.updaterRunnable.new TimedRunnable() {...}.runImpl() START UPDATE");
-
-			String textstring;
-			ArrayList<TextRegionChange> events;
-			synchronized (updateLock) {
-				textstring = textContent.toString();
-				events = new ArrayList<>(unprocessedChangeEvents);
-			}
-
-			try {
-				model.updateModel(new ArrayList<>(events),
-						() -> new UnsyncByteArrayInputStream(textstring.getBytes(StandardCharsets.UTF_8)));
-				synchronized (updateLock) {
-					for (TextRegionChange e : events) {
-						if (unprocessedChangeEvents.pollFirst() != e) {
-							throw new IllegalStateException("illegal event state.");
-						}
-					}
-				}
-				//only update representation if successfully updated the model
-				cancel(presentationUpdater);
-				presentationUpdater.run();
-				cancel(outlineUpdater);
-				outlineUpdater.run();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-//			System.out.println("BuildFileEditor.updaterRunnable.new TimedRunnable() {...}.runImpl() " + (System.nanoTime() - nanos) / 1_000_000 + " ms");
-		}
-	};
-	private TimedRunnable presentationUpdater = new TimedRunnable() {
-		@Override
-		protected void runImpl() {
-			ITextViewer textviewer = getSourceViewer();
-			if (textviewer != null) {
-				Display.getDefault().asyncExec(() -> {
-					//make sure still the same viewer
-					if (getSourceViewer() == textviewer) {
-						try {
-							TextPresentation tp = new TextPresentation(1000);
-							if (tp.isEmpty()) {
-								//to avoid some nullpointer exception 
-//								java.lang.NullPointerException
-//									at org.eclipse.jface.text.source.AnnotationPainter.applyTextPresentation(AnnotationPainter.java:1015)
-//									at org.eclipse.jface.text.TextViewer.changeTextPresentation(TextViewer.java:4722)
-								tp.addStyleRange(new StyleRange());
-							}
-							configuration.createPresentation(tp, null);
-							textviewer.changeTextPresentation(tp, false);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		}
-	};
-	private TimedRunnable outlineUpdater = new TimedRunnable() {
-		@Override
-		protected void runImpl() {
-			ScriptSyntaxModel model = BuildFileEditor.this.model;
-			if (model == null) {
-				return;
-			}
-			OutlinePage outlinepage = outline;
-			if (outlinepage != null) {
-				Display.getDefault().asyncExec(() -> {
-					if (outline == outlinepage) {
-						//make sure wasnt disposed
-						outlinepage.updateContent(model);
-					}
-				});
-			}
-		}
-	};
+	private ScriptEditorModel editorModel = new ScriptEditorModel();
 
 	private int currentTokenTheme = TokenStyle.THEME_LIGHT;
 
-	private EclipseSakerIDEProject propertiesChangeListenerProject;
-	private ScriptRelatedPropertiesChangeHandler projectPropertiesChangeListener;
 	private ResourceCloser singleEnvironmentsResourceCloser = new ResourceCloser();
 
 	private IPropertyChangeListener themeListener;
+
+	private Timer timer = new Timer(true);
+	private TimerTask outlineSelectionUpdateTimerTask;
+	private TimerTask outlineContentUpdaterTimerTask;
 
 	public BuildFileEditor() {
 		setSourceViewerConfiguration(configuration);
@@ -1768,8 +1402,9 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 				if (BACKGROUND_COLOR_REGISTRY_PROPERTY_NAME.equals(event.getProperty())) {
 					RGB rgb = (RGB) event.getNewValue();
 					currentTokenTheme = rgb.getHSB()[2] < 0.4f ? TokenStyle.THEME_DARK : TokenStyle.THEME_LIGHT;
-					reschedule(presentationUpdater);
-					reschedule(outlineUpdater);
+					editorModel.setTokenTheme(currentTokenTheme);
+					rescheduleOutlineUpdate();
+					reschedulePresentationUpdate();
 				}
 			}
 		};
@@ -1777,7 +1412,9 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		colorregistry.addListener(themeListener);
 		boolean darktheme = isCurrentThemeDark(colorregistry);
 		currentTokenTheme = darktheme ? TokenStyle.THEME_DARK : TokenStyle.THEME_LIGHT;
+		editorModel.setTokenTheme(currentTokenTheme);
 
+		editorModel.addModelListener(this);
 	}
 
 	public static boolean isCurrentThemeDark() {
@@ -1800,143 +1437,29 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 //		return super.affectsTextPresentation(event);
 	}
 
-	private void runUpdaterThread() {
-		try {
-			while (!Thread.interrupted()) {
-				TimedRunnable first = null;
-				getter:
-				synchronized (updateRunnables) {
-					while (updateRunnables.isEmpty()) {
-						updateRunnables.wait();
-					}
-					TimedRunnable got = updateRunnables.first();
-					long currentmillis = nanoMillis();
-					long exectime;
-					long towait;
-					synchronized (got) {
-						exectime = got.executeTime;
-						towait = exectime - currentmillis;
-						if (towait <= 0) {
-							//remove the first
-							updateRunnables.pollFirst();
-							first = got;
-							break getter;
-						}
-					}
-					updateRunnables.wait(towait);
-					if (updateRunnables.isEmpty()) {
-						continue;
-					}
-					TimedRunnable nfirst = updateRunnables.first();
-					if (got != nfirst || got.executeTime != exectime) {
-						//the first runnable changed while we were waiting for it
-						//or the execution time of the runnable was changed
-						continue;
-					}
-					updateRunnables.pollFirst();
-					first = got;
-				}
-				try {
-					first.run();
-				} catch (Throwable t) {
-//					Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Error during updating editor model.", t);
-//					StatusManager.getManager().handle(status);
-//					Activator.getDefault().getLog().log(status);
-					t.printStackTrace();
-				}
-			}
-		} catch (InterruptedException e) {
-		}
-	}
-
-	private static long nanoMillis() {
-		return System.nanoTime() / 1_000_00;
-	}
-
-	private void reschedule(TimedRunnable timedrun, long delay) {
-		synchronized (updateRunnables) {
-			synchronized (timedrun) {
-				timedrun.setDelay(delay);
-				timedrun.rescheduled();
-			}
-			updateRunnables.remove(timedrun);
-			updateRunnables.add(timedrun);
-			updateRunnables.notifyAll();
-		}
-
-	}
-
-	private void reschedule(TimedRunnable timedrun) {
-		synchronized (updateRunnables) {
-			synchronized (timedrun) {
-				timedrun.setInstant();
-				timedrun.rescheduled();
-			}
-			updateRunnables.remove(timedrun);
-			updateRunnables.add(timedrun);
-			updateRunnables.notifyAll();
-		}
-	}
-
-	private void cancel(TimedRunnable timedrun) {
-//		System.out.println("BuildFileEditor.cancel()");
-		synchronized (updateRunnables) {
-			synchronized (timedrun) {
-				updateRunnables.remove(timedrun);
-			}
-		}
-		timedrun.notifyUnfinished();
-	}
-
 	private ScriptSyntaxModel getUpdatedModel() {
-		long nanos = System.nanoTime();
-		reschedule(modelUpdaterRunnable);
-		try {
-			modelUpdaterRunnable.joinFinish();
-		} catch (InterruptedException e) {
-			//don't wait
-		}
-		System.out.println("BuildFileEditor.getUpdatedModel() " + (System.nanoTime() - nanos) / 1_000_000 + " ms");
-		return model;
+		return editorModel.getUpToDateModel();
 	}
 
 	@Override
 	public void init(IEditorSite site, IEditorInput input) throws PartInitException {
 		System.out.println("BuildFileEditor.init() start");
-		updaterThread = new Thread(this::runUpdaterThread);
-		updaterThread.start();
 		super.init(site, input);
 		System.out.println("BuildFileEditor.init() end");
 	}
 
 	@Override
 	public void dispose() {
+		timer.cancel();
 		ITheme currentTheme = PlatformUI.getWorkbench().getThemeManager().getCurrentTheme();
 		currentTheme.getColorRegistry().removeListener(themeListener);
-		cancel(modelUpdaterRunnable);
-		cancel(outlineUpdater);
-		cancel(presentationUpdater);
-		Thread ut = updaterThread;
-		if (ut != null) {
-			ut.interrupt();
-		}
-		ISourceViewer sourceViewer = getSourceViewer();
-		if (sourceViewer instanceof ITextViewerExtension) {
-			((ITextViewerExtension) sourceViewer).removeVerifyKeyListener(this);
-		}
 		super.dispose();
 		for (Color c : typecolors.values()) {
 			c.dispose();
 		}
-		if (ut != null) {
-			try {
-				ut.join();
-			} catch (InterruptedException e) {
-				//dont wait. exceptions in the updater thread are handled there
-			}
-		}
-		disposeModel();
-		disposeProjectPropertiesChangeHandler();
+		outline = null;
+		editorModel.removeModelListener(this);
+		editorModel.close();
 	}
 
 	private final static class NullScriptModellingEngine implements ScriptModellingEngine {
@@ -2059,75 +1582,16 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 	private void doSetIFileInput(IFileEditorInput input) {
 		IFile file = input.getFile();
 		System.out.println("BuildFileEditor.setDocumentProvider() IFileEditorInput " + file);
-		ScriptSyntaxModel model;
 		IProject project = file.getProject();
 		ImplActivator activator = ImplActivator.getDefault();
 		EclipseSakerIDEProject sakereclipseproject = activator.getOrCreateSakerProject(project);
-		EclipseSakerIDEPlugin eclipsesakerplugin = activator.getEclipseIDEPlugin();
-		if (sakereclipseproject == null) {
-			model = doSetStandaloneIFileInput(file, eclipsesakerplugin);
-		} else {
-			ScriptModellingEnvironment modellingenvironment = sakereclipseproject.getScriptingEnvironment();
-			if (modellingenvironment == null) {
-				model = doSetStandaloneIFileInput(file, sakereclipseproject);
-			} else {
-				SakerPath scriptpath = sakereclipseproject
-						.projectPathToExecutionPath(SakerPath.valueOf(file.getProjectRelativePath().toString()));
-				model = modellingenvironment.getModel(scriptpath);
-			}
-			disposeProjectPropertiesChangeHandler();
-			propertiesChangeListenerProject = sakereclipseproject;
-			projectPropertiesChangeListener = new IFileInputSettingProjectPropertiesChangeHandler(input);
-			sakereclipseproject.addProjectResourceListener(projectPropertiesChangeListener);
-			eclipsesakerplugin.addPluginResourceListener(projectPropertiesChangeListener);
+		if (sakereclipseproject != null) {
+			SakerPath scriptpath = sakereclipseproject
+					.projectPathToExecutionPath(SakerPath.valueOf(file.getProjectRelativePath().toString()));
+			editorModel.setEnvironment(sakereclipseproject.getSakerProject());
+			editorModel.setScriptExecutionPath(scriptpath);
 		}
-		finishDoSetInput(input, model);
-	}
-
-	private void disposeProjectPropertiesChangeHandler() {
-		if (projectPropertiesChangeListener != null) {
-			propertiesChangeListenerProject.removeProjectResourceListener(projectPropertiesChangeListener);
-			propertiesChangeListenerProject.getPlugin().removePluginResourceListener(projectPropertiesChangeListener);
-			projectPropertiesChangeListener = null;
-		}
-	}
-
-	private interface ScriptRelatedPropertiesChangeHandler extends ProjectResourceListener, PluginResourceListener {
-	}
-
-	private final class IFileInputSettingProjectPropertiesChangeHandler
-			implements ScriptRelatedPropertiesChangeHandler {
-		private final IFileEditorInput input;
-
-		IFileInputSettingProjectPropertiesChangeHandler(IFileEditorInput input) {
-			this.input = input;
-		}
-
-		@Override
-		public void scriptModellingEnvironmentClosing(ScriptModellingEnvironment env) {
-			System.out.println(
-					"BuildFileEditor.IFileInputSettingProjectPropertiesChangeHandler.scriptModellingEnvironmentClosing()");
-			disposeModel();
-		}
-
-		@Override
-		public void scriptModellingEnvironmentCreated(ScriptModellingEnvironment env) {
-			System.out.println(
-					"BuildFileEditor.IFileInputSettingProjectPropertiesChangeHandler.scriptModellingEnvironmentCreated()");
-			doSetIFileInput(input);
-		}
-
-		@Override
-		public void environmentClosing(SakerEnvironmentImpl environment) {
-			System.out.println("BuildFileEditor.IFileInputSettingProjectPropertiesChangeHandler.environmentClosing()");
-			disposeModel();
-		}
-
-		@Override
-		public void environmentCreated(SakerEnvironmentImpl environment) {
-			System.out.println("BuildFileEditor.IFileInputSettingProjectPropertiesChangeHandler.environmentCreated()");
-			doSetIFileInput(input);
-		}
+		finishDoSetInput(input);
 	}
 
 	private ScriptSyntaxModel doSetStandaloneIFileInput(IFile file, ExceptionDisplayer exceptiondisplayer) {
@@ -2146,15 +1610,12 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 
 	@Override
 	protected void doSetInput(IEditorInput input) throws CoreException {
-		disposeModel();
 		super.doSetInput(input);
-		ScriptSyntaxModel model;
 		System.out.println("BuildFileEditor.setDocumentProvider() " + input + " - " + input.getName());
 		if (input instanceof IFileEditorInput) {
 			doSetIFileInput((IFileEditorInput) input);
 			return;
 		} else {
-			model = null;
 //			throw new UnsupportedOperationException("unimplemented");
 //			if (input instanceof IPathEditorInput) {
 //				IPath path = ((IPathEditorInput) input).getPath();
@@ -2187,65 +1648,16 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 //			}
 		}
 
-		finishDoSetInput(input, model);
+		finishDoSetInput(input);
 	}
 
-	private void finishDoSetInput(IEditorInput input, ScriptSyntaxModel model) {
+	private void finishDoSetInput(IEditorInput input) {
 		IDocumentProvider docprov = getDocumentProvider();
 		//may be null if the editor has been closed
 		if (docprov != null) {
 			IDocument doc = docprov.getDocument(input);
-			synchronized (updateLock) {
-				textContent.setLength(0);
-				textContent.append(doc.get());
-			}
+			editorModel.resetInput(doc.get());
 		}
-		this.model = model;
-
-		reschedule(modelUpdaterRunnable);
-	}
-
-	private void disposeModel() {
-		ScriptSyntaxModel model = BuildFileEditor.this.model;
-		if (model != null) {
-			synchronized (updateLock) {
-				unprocessedChangeEvents.clear();
-			}
-			model.invalidateModel();
-			try {
-				singleEnvironmentsResourceCloser.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-//			modellingEnvironment.destroyModel(model);
-//			if (modellingEnvironment instanceof SingleScriptModellingEnvironment) {
-//				try {
-//					modellingEnvironment.close();
-//				} catch (IOException e) {
-//					e.printStackTrace();
-//				}
-//			}
-			ARFU_model.compareAndSet(this, model, null);
-		}
-	}
-
-	private InputStream getContentInputStream(ITextViewer sv) {
-		IDocument doc = sv.getDocument();
-		return new UnsyncByteArrayInputStream(doc.get().getBytes());
-	}
-
-	private InputStream getContentInputStream() {
-		ISourceViewer sv = getSourceViewer();
-		return getContentInputStream(sv);
-	}
-
-	private int getCaretPosition() {
-		ISelection selection = doGetSelection();
-		if (selection instanceof ITextSelection) {
-			return ((ITextSelection) selection).getOffset();
-		}
-		return -1;
 	}
 
 	@Override
@@ -2253,36 +1665,74 @@ public class BuildFileEditor extends TextEditor implements VerifyKeyListener {
 		super.handleCursorPositionChanged();
 		//reschedule the job
 		if (outline != null && outline.ignoreSelectionListener == 0) {
-			reschedule(outlineUpdater, OUTLINE_JOB_INPUT_DELAY);
+			rescheduleOutlineSelectionUpdate();
+		}
+	}
+
+	protected void rescheduleOutlineUpdate() {
+		TimerTask currenttask = outlineContentUpdaterTimerTask;
+		if (currenttask != null) {
+			currenttask.cancel();
+		}
+		TimerTask ntask = new OutlineContentUpdaterTimerTask();
+		outlineContentUpdaterTimerTask = ntask;
+		timer.schedule(ntask, OUTLINE_JOB_INPUT_DELAY);
+	}
+
+	protected void rescheduleOutlineSelectionUpdate() {
+		TimerTask currenttask = outlineSelectionUpdateTimerTask;
+		if (currenttask != null) {
+			currenttask.cancel();
+		}
+		TimerTask ntask = new OutlineSelectionUpdaterTimerTask();
+		outlineSelectionUpdateTimerTask = ntask;
+		timer.schedule(ntask, OUTLINE_JOB_INPUT_DELAY);
+	}
+
+	protected void reschedulePresentationUpdate() {
+		ITextViewer textviewer = getSourceViewer();
+		if (textviewer != null) {
+			getSite().getShell().getDisplay().asyncExec(() -> {
+				ITextViewer currenttextviewer = getSourceViewer();
+				if (currenttextviewer == textviewer) {
+					TextPresentation tp = new TextPresentation(1000);
+					configuration.createPresentation(tp, null);
+					textviewer.changeTextPresentation(tp, false);
+				}
+			});
 		}
 	}
 
 	@Override
-	protected ISourceViewer createSourceViewer(Composite parent, IVerticalRuler ruler, int styles) {
-		ISourceViewer result = super.createSourceViewer(parent, ruler, styles);
-		if (result instanceof ITextViewerExtension) {
-			((ITextViewerExtension) result).prependVerifyKeyListener(this);
+	public void modelUpdated(ScriptSyntaxModel model) {
+		if (model == null) {
+			return;
 		}
-		return result;
+		reschedulePresentationUpdate();
+		rescheduleOutlineUpdate();
 	}
 
-	@Override
-	public void createPartControl(Composite parent) {
-		System.out.println("BuildFileEditor.createPartControl()");
-		super.createPartControl(parent);
-		reschedule(modelUpdaterRunnable);
+	private final class OutlineSelectionUpdaterTimerTask extends TimerTask {
+		@Override
+		public void run() {
+			getSite().getShell().getDisplay().asyncExec(() -> {
+				OutlinePage outlinepage = outline;
+				if (outlinepage != null) {
+					outlinepage.updateSelection();
+				}
+			});
+		}
 	}
 
-	@Override
-	public void verifyKey(VerifyEvent event) {
-		// TODO Auto-generated method stub
-//		System.out.println("BuildFileEditor.createSourceViewer(...).new VerifyKeyListener() {...}.verifyKey() " + event);
+	private final class OutlineContentUpdaterTimerTask extends TimerTask {
+		@Override
+		public void run() {
+			getSite().getShell().getDisplay().asyncExec(() -> {
+				OutlinePage outlinepage = outline;
+				if (outlinepage != null) {
+					outlinepage.updateContent();
+				}
+			});
+		}
 	}
-
-	@Override
-	protected void editorContextMenuAboutToShow(IMenuManager menu) {
-		// TODO Auto-generated method stub
-		super.editorContextMenuAboutToShow(menu);
-	}
-
 }

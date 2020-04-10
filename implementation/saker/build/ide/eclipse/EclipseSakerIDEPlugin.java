@@ -220,8 +220,8 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		new Job("Updating environment parameters") {
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
-				sakerPlugin.updateForPluginProperties(
-						getIDEPluginPropertiesWithEnvironmentParameterContributions(properties, monitor));
+				sakerPlugin.updateForPluginProperties(getIDEPluginPropertiesWithEnvironmentParameterContributions(
+						sakerPlugin.getIDEPluginProperties(), monitor));
 				return Status.OK_STATUS;
 			}
 		}.schedule();

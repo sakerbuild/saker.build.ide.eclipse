@@ -98,14 +98,14 @@ public class LogHighlightingConsole extends IOConsole implements LineBackgroundL
 			@Override
 			public void run() {
 				Color errorlight = new Color(Display.getDefault(), 254, 231, 224);
-				Color infolight = new Color(Display.getDefault(), 244, 247, 254);
+				Color infolight = new Color(Display.getDefault(), 227, 235, 253);
 				Color warnlight = new Color(Display.getDefault(), 254, 243, 218);
 				Color successlight = new Color(Display.getDefault(), 217, 242, 221);
 
-				Color errordark = new Color(Display.getDefault(), 130, 0, 3);
-				Color infodark = new Color(Display.getDefault(), 0, 80, 160);
-				Color warndark = new Color(Display.getDefault(), 148, 133, 27);
-				Color successdark = new Color(Display.getDefault(), 0, 110, 3);
+				Color errordark = new Color(Display.getDefault(), 81,38,39);
+				Color infodark = new Color(Display.getDefault(), 37, 50, 82);
+				Color warndark = new Color(Display.getDefault(), 80, 77, 22);
+				Color successdark = new Color(Display.getDefault(), 28, 74, 23);
 
 				//put in prefix order
 				lightSeverityColorMap.put("fatal error", errorlight);
