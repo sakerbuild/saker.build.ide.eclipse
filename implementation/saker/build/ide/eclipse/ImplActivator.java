@@ -78,6 +78,10 @@ public class ImplActivator implements AutoCloseable, IResourceChangeListener {
 
 	public static void clean(IProject project, IProgressMonitor monitor) throws IOException {
 		EclipseSakerIDEProject ideproject = getDefault().getOrCreateSakerProject(project);
+		clean(ideproject, monitor);
+	}
+
+	public static void clean(EclipseSakerIDEProject ideproject, IProgressMonitor monitor) {
 		if (ideproject == null) {
 			return;
 		}

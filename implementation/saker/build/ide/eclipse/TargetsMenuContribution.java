@@ -125,6 +125,26 @@ public class TargetsMenuContribution extends ContributionItem {
 		} else {
 			addTargetsMenu(sakereclipseproject, menu);
 			addIDEConfigurationMenu(sakereclipseproject, menu);
+			new Separator().fill(menu, -1);
+			new ActionContributionItem(new Action("Clean project") {
+				@Override
+				public void run() {
+					Job j = new Job("Clean saker.build project") {
+						@Override
+						protected IStatus run(IProgressMonitor monitor) {
+							try {
+								sakereclipseproject.clean(monitor);
+
+								return Status.OK_STATUS;
+							} catch (Exception e) {
+								return new Status(IStatus.ERROR, Activator.PLUGIN_ID, "Failed to clean saker.build project", e);
+							}
+						}
+					};
+					j.setPriority(Job.BUILD);
+					j.schedule();
+				}
+			}).fill(menu, -1);
 		}
 	}
 
