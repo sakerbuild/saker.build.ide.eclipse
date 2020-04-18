@@ -18,7 +18,6 @@ package saker.build.ide.eclipse.properties;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -52,7 +51,6 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.dialogs.PropertyPage;
 
 import saker.build.file.path.SakerPath;
-import saker.build.ide.eclipse.EclipseSakerIDEPlugin;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SakerIDEProject;
@@ -690,11 +688,8 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 		protected void okPressed() {
 			String mountpathstr = mountPathText.getText();
 			String mountrootstr = mountRootText.getText();
-			//normalize the root if we can
-			this.mountRoot = ObjectUtils.nullDefault(EclipseSakerIDEPlugin.tryNormalizePathRoot(mountrootstr),
-					mountrootstr);
-			//convert to path, and assign its string representation in order to normalize the path
-			this.mountPath = Objects.toString(SakerIDESupportUtils.tryParsePath(mountpathstr), mountpathstr);
+			this.mountRoot = SakerIDESupportUtils.normalizePathRoot(mountrootstr);
+			this.mountPath = SakerIDESupportUtils.normalizePath(mountpathstr);
 			int connectionidx = connectionCombo.getSelectionIndex();
 			switch (connectionidx) {
 				case MOUNT_DIALOG_PROJECT_CONNECTION_NAME_INDEX: {

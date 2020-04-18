@@ -54,7 +54,6 @@ import org.eclipse.ui.console.IConsoleManager;
 import org.eclipse.ui.console.IOConsole;
 
 import saker.build.daemon.DaemonLaunchParameters;
-import saker.build.file.path.SakerPath;
 import saker.build.ide.eclipse.api.ISakerPlugin;
 import saker.build.ide.eclipse.extension.params.IEnvironmentUserParameterContributor;
 import saker.build.ide.eclipse.extension.params.UserParameterModification;
@@ -156,15 +155,6 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		} catch (IOException e) {
 			displayException(e);
 		}
-
-		PlatformUI.getWorkbench().getDisplay().asyncExec(() -> {
-			synchronized (consoleLock) {
-				if (closed) {
-					return;
-				}
-				getConsoleImplOnUIThread();
-			}
-		});
 	}
 
 	public void addPluginResourceListener(PluginResourceListener listener) {
@@ -531,14 +521,6 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 			return designers.get(0);
 		}
 		return new MultiScriptOutlineDesigner(designers);
-	}
-
-	public static String tryNormalizePathRoot(String root) {
-		try {
-			return SakerPath.normalizeRoot(root);
-		} catch (IllegalArgumentException e) {
-			return null;
-		}
 	}
 
 	public static String getExtensionName(IExtension extension) {

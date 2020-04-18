@@ -399,8 +399,7 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 		@Override
 		protected void okPressed() {
 			String mountpathstr = mountPathText.getText();
-			//convert to path, and assign its string representation in order to normalize the path
-			this.mountPath = Objects.toString(SakerIDESupportUtils.tryParsePath(mountpathstr), mountpathstr);
+			this.mountPath = SakerIDESupportUtils.normalizePath(mountpathstr);
 			int connectionidx = connectionCombo.getSelectionIndex();
 			switch (connectionidx) {
 				case PathConfigurationProjectPropertyPage.MOUNT_DIALOG_PROJECT_CONNECTION_NAME_INDEX: {

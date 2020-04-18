@@ -848,7 +848,7 @@ public class BuildFileEditor extends TextEditor implements ModelUpdateListener {
 		@Override
 		@Deprecated
 		public String getHoverInfo(ITextViewer textViewer, IRegion hoverRegion) {
-			return "Eclipse called deprecated getHoverInfo function.";
+			return null;
 		}
 
 		@Override
@@ -1349,11 +1349,15 @@ public class BuildFileEditor extends TextEditor implements ModelUpdateListener {
 
 		public BuildFileContentAssistant() {
 			//true --> create async proposal popup
-			super(true);
+			//false --> non async
+
+			//don't create an asynchronous proposal assistant, as the completion proposal retrievals
+			//should finish FAST. Using async proposal popups cause blinking when proposals are recomputed
+			super(false);
 
 			enableColoredLabels(true);
 			setContentAssistProcessor(new BuildFileContentAssistantProcessor(), IDocument.DEFAULT_CONTENT_TYPE);
-			setRepeatedInvocationMode(true);
+//			setRepeatedInvocationMode(true);
 			setRestoreCompletionProposalSize(Activator.getDefault().getProposalDialogSettings());
 			setInformationControlCreator(new RichInformationControlCreator());
 			setSorter((l, r) -> {
@@ -1693,8 +1697,7 @@ public class BuildFileEditor extends TextEditor implements ModelUpdateListener {
 		ITextViewer textviewer = getSourceViewer();
 		if (textviewer != null) {
 			getSite().getShell().getDisplay().asyncExec(() -> {
-				ITextViewer currenttextviewer = getSourceViewer();
-				if (currenttextviewer == textviewer) {
+				if (getSourceViewer() == textviewer) {
 					TextPresentation tp = new TextPresentation(1000);
 					configuration.createPresentation(tp, null);
 					textviewer.changeTextPresentation(tp, false);

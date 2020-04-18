@@ -33,6 +33,7 @@ import saker.build.ide.eclipse.EclipseSakerIDEPlugin;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.ui.ExceptionFormatSelector;
+import saker.build.meta.Versions;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class SakerBuildEnvironmentPreferencePage extends PreferencePage implements IWorkbenchPreferencePage {
@@ -66,8 +67,8 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 		data.verticalAlignment = GridData.FILL;
 		composite.setLayoutData(data);
 
-		Label label = new Label(composite, SWT.NONE);
-		label.setText("General settings for the saker.build plugin.");
+		new Label(composite, SWT.NONE).setText("General settings for the saker.build plugin.");
+		new Label(composite, SWT.NONE).setText("Saker.build system version: " + Versions.VERSION_STRING_FULL);
 
 		Group exeptionformatgroup = new Group(composite, SWT.NONE);
 		exeptionformatgroup.setLayout(new GridLayout(1, false));
