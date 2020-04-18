@@ -54,4 +54,4 @@ steps:
   inputs:
     gitHubConnection: saker.build.ide.eclipse-ci-release-push-2
     repositoryName: sakerbuild/saker.build.ide.eclipse
-    assets: gh-release/
+    assets: gh-release/*
