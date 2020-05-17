@@ -103,6 +103,7 @@ steps:
     
 - task: GithubRelease@0
   displayName: 'Create GitHub Release'
+  condition: succeeded()
   inputs:
     gitHubConnection: saker.build.ide.eclipse-ci-release-push-2
     repositoryName: sakerbuild/saker.build.ide.eclipse
