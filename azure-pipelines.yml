@@ -13,7 +13,7 @@ steps:
 - script: |
     set -e
     TAGVER=$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/')
-    sed -i -s 's/111.222.333.qualifier/$TAGVER.qualifier/g' META-INF/MANIFEST.MF
+    sed -i -s "s/111.222.333.qualifier/$TAGVER.qualifier/g" META-INF/MANIFEST.MF
     echo "New version: $(cat META-INF/MANIFEST.MF | grep 'Bundle-Version:')"
   condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
   displayName: 'Replace Bundle-Version'
