@@ -20,7 +20,7 @@ pool:
 
 steps:
 - checkout: none
-- script: echo "##vso[task.setvariable variable=RELEASE_VERSION]$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/')"
+- script: echo "##vso[task.setvariable variable=RELEASE_VERSION]$(echo $BUILD_SOURCEBRANCHNAME)"
   condition: and(eq(variables['RELEASE_VERSION'], ''), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
   displayName: 'Set RELEASE_VERSION from tag'
 - script: exit 1
