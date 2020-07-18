@@ -83,7 +83,7 @@ steps:
     mkdir repo
     for plugin in saker.build.ide.eclipse saker.java.ide.eclipse; do
       echo "Append $plugin"
-      eclipse/eclipse -nosplash -application org.eclipse.equinox.p2.publisher.FeaturesAndBundlesPublisher -metadataRepository file:$(pwd)/repo -artifactRepository file:$(pwd)/repo -artifactRepositoryName "Saker.build Update Site" -metadataRepositoyName "Saker.build Update Site" -publishArtifacts -compress -append -source site-$plugin
+      eclipse/eclipse -nosplash -application org.eclipse.equinox.p2.publisher.FeaturesAndBundlesPublisher -metadataRepository file:$(pwd)/repo -artifactRepository file:$(pwd)/repo -artifactRepositoryName "Saker.build Update Site" -metadataRepositoryName "Saker.build Update Site" -publishArtifacts -compress -append -source site-$plugin
     done
     echo "Set categories"
     eclipse/eclipse -nosplash -application org.eclipse.equinox.p2.publisher.CategoryPublisher -metadataRepository file:$(pwd)/repo -categoryDefinition file:$(pwd)/release-saker.build.ide.eclipse/category.xml -categoryQualifier cq -compress
