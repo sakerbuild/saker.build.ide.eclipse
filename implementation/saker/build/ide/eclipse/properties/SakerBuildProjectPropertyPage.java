@@ -79,9 +79,11 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 		ideProject = ImplActivator.getDefault().getOrCreateSakerProject(element.getAdapter(IProject.class));
 		if (ideProject != null) {
 			IDEProjectProperties ideprops = ideProject.getIDEProjectProperties();
-			requireIdeConfig = ideprops.isRequireTaskIDEConfiguration();
+			requireIdeConfig = SakerIDESupportUtils.getBooleanValueOrDefault(ideprops.getRequireTaskIDEConfiguration(),
+					true);
 			buildTraceOutput = ideprops.getBuildTraceOutput();
-			embedBuildTraceArtifacts = ideprops.isBuildTraceEmbedArtifacts();
+			embedBuildTraceArtifacts = SakerIDESupportUtils
+					.getBooleanValueOrDefault(ideprops.getBuildTraceEmbedArtifacts(), false);
 		}
 	}
 
@@ -150,9 +152,10 @@ public class SakerBuildProjectPropertyPage extends PropertyPage {
 		return composite;
 	}
 
-	public static void addLabelWithText(Composite composite, String text) {
+	public static Label addLabelWithText(Composite composite, String text) {
 		Label label = new Label(composite, SWT.NONE);
 		label.setText(text);
+		return label;
 	}
 
 	private void populateControls() {

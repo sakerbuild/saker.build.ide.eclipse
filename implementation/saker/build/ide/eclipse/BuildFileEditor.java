@@ -1699,6 +1699,10 @@ public class BuildFileEditor extends TextEditor implements ModelUpdateListener {
 			getSite().getShell().getDisplay().asyncExec(() -> {
 				if (getSourceViewer() == textviewer) {
 					TextPresentation tp = new TextPresentation(1000);
+					if (tp.getExtent() == null) {
+						//add an empty style to avoid NPE in buggy Eclipse code......
+						tp.addStyleRange(new StyleRange());
+					}
 					configuration.createPresentation(tp, null);
 					textviewer.changeTextPresentation(tp, false);
 				}

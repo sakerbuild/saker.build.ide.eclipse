@@ -581,7 +581,7 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		return sakerProject.getProjectPath();
 	}
 
-	public final ScriptModellingEnvironment getScriptingEnvironment() {
+	public final ScriptModellingEnvironment getScriptingEnvironment() throws IOException {
 		return sakerProject.getScriptingEnvironment();
 	}
 
@@ -789,8 +789,10 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 			BuildTaskExecutionResult result = null;
 			SakerPath executionworkingdir = null;
 			Display display = PlatformUI.getWorkbench().getDisplay();
+			boolean locked = false;
 			try {
 				executionLock.lockInterruptibly();
+				locked = true;
 				console.clearConsole();
 				if (monitorwrapper.isCancelled()) {
 					out.write("Build cancelled.\n");
@@ -824,9 +826,13 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 					return;
 				}
 				DaemonEnvironment daemonenv = sakerProject.getExecutionDaemonEnvironment(projectproperties);
+				if (daemonenv == null) {
+					throw new IllegalStateException("Build daemon environment is not running.");
+				}
 				ExecutionPathConfiguration pathconfiguration = params.getPathConfiguration();
 				executionworkingdir = pathconfiguration.getWorkingDirectory();
-				params.setRequiresIDEConfiguration(projectproperties.isRequireTaskIDEConfiguration());
+				params.setRequiresIDEConfiguration(SakerIDESupportUtils
+						.getBooleanValueOrDefault(projectproperties.getRequireTaskIDEConfiguration(), true));
 
 				try {
 					ideProject.setPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME, scriptfile.toString());
@@ -1029,7 +1035,9 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				if (streamscloseexc != null) {
 					displayException(streamscloseexc);
 				}
-				executionLock.unlock();
+				if (locked) {
+					executionLock.unlock();
+				}
 			}
 		} finally {
 			console.endBuild(consoleaccessor);

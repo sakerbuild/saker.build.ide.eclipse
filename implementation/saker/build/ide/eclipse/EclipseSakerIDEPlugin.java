@@ -181,7 +181,7 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		}.schedule();
 	}
 
-	public final SakerEnvironmentImpl getPluginEnvironment() {
+	public final SakerEnvironmentImpl getPluginEnvironment() throws IOException {
 		return sakerPlugin.getPluginEnvironment();
 	}
 

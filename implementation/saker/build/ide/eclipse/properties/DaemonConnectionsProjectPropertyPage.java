@@ -63,6 +63,7 @@ import org.eclipse.ui.dialogs.PropertyPage;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SakerIDEProject;
+import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
@@ -76,10 +77,13 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 
 	private EclipseSakerIDEProject ideProject;
 	private List<TreePropertyItem<DaemonConnectionIDEProperty>> connectionItems = new ArrayList<>();
+	private boolean useClientsAsClusters;
 
 	private TreeViewer connectionsTreeViewer;
 //	private List<String> executionDaemonComboNames = new ArrayList<>();
 	private Combo executionDaemonCombo;
+
+	private Button useClientsAsClustersButton;
 
 	private ExecutionDaemonSelector daemonSelector;
 
@@ -105,6 +109,8 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 					connectionItems.add(new TreePropertyItem<>(AIFU_propertyCounter.getAndIncrement(this), prop));
 				}
 			}
+			useClientsAsClusters = SakerIDESupportUtils.getBooleanValueOrDefault(ideprops.getUseClientsAsClusters(),
+					false);
 		}
 		daemonSelector = new ExecutionDaemonSelector(ideprops);
 	}
@@ -345,6 +351,11 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 		}));
 		updateExecutionDaemonComboItems();
 
+		useClientsAsClustersButton = new Button(composite, SWT.CHECK);
+		useClientsAsClustersButton.setText("Use clients as build clusters");
+		useClientsAsClustersButton.setSelection(useClientsAsClusters);
+		GridDataFactory.defaultsFor(useClientsAsClustersButton).span(2, 1).applyTo(useClientsAsClustersButton);;
+
 		validateProperties();
 
 		return composite;
@@ -456,6 +467,8 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 		connectionItems.clear();
 		connectionsTreeViewer.refresh();
 		daemonSelector.reset(null);
+		useClientsAsClusters = false;
+		useClientsAsClustersButton.setSelection(useClientsAsClusters);
 
 		updateExecutionDaemonComboItems();
 		validateProperties();
@@ -467,6 +480,7 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 		String execdaemonname = daemonSelector.getSelectedExecutionDaemonName();
 		ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
 				.setConnections(ImmutableUtils.makeImmutableLinkedHashSet((connections)))
+				.setUseClientsAsClusters(useClientsAsClustersButton.getSelection())
 				.setExecutionDaemonConnectionName(execdaemonname).build());
 		return true;
 	}
