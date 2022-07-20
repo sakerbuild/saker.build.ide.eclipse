@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -32,7 +33,10 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+import javax.net.ssl.SSLContext;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
@@ -54,6 +58,7 @@ import org.eclipse.ui.console.IConsoleManager;
 import org.eclipse.ui.console.IOConsole;
 
 import saker.build.daemon.DaemonLaunchParameters;
+import saker.build.file.path.SakerPath;
 import saker.build.ide.eclipse.api.ISakerPlugin;
 import saker.build.ide.eclipse.extension.params.IEnvironmentUserParameterContributor;
 import saker.build.ide.eclipse.extension.params.UserParameterModification;
@@ -73,11 +78,13 @@ import saker.build.ide.support.persist.XMLStructuredReader;
 import saker.build.ide.support.persist.XMLStructuredWriter;
 import saker.build.ide.support.properties.IDEPluginProperties;
 import saker.build.runtime.environment.SakerEnvironmentImpl;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.io.IOUtils;
 
 public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplayer, ISakerPlugin {
+	private static final String NODE_ARRAY_EXTENSION_DISABLEMENTS = "extension_disablements";
 	private static final String CONFIG_FILE_ROOT_OBJECT_NAME = "saker.build.ide.eclipse.plugin.config";
 	private static final String IDE_PLUGIN_PROPERTIES_FILE_NAME = "." + CONFIG_FILE_ROOT_OBJECT_NAME;
 
@@ -147,14 +154,19 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		}
 		environmentParameterContributors = ImmutableUtils.unmodifiableList(environmentParameterContributors);
 
-		try {
-			sakerPlugin.initialize(sakerJarPath, plugindirectory);
-			sakerPlugin.start(sakerPlugin.createDaemonLaunchParameters(
-					getIDEPluginPropertiesWithEnvironmentParameterContributions(sakerPlugin.getIDEPluginProperties(),
-							new NullProgressMonitor())));
-		} catch (IOException e) {
-			displayException(e);
-		}
+		//initialization doesn't fail
+		sakerPlugin.initialize(sakerJarPath, plugindirectory);
+
+	}
+
+	public void start(IProgressMonitor progressmonitor) throws Exception {
+		IDEPluginProperties propertieswithcontributors = getIDEPluginPropertiesWithEnvironmentParameterContributions(
+				sakerPlugin.getIDEPluginProperties(), progressmonitor);
+		//TODO handle keystores if any
+		SSLContext sslcontext = null;
+		SakerPath keystorepath = null;
+		sakerPlugin.start(sakerPlugin.createDaemonLaunchParameters(propertieswithcontributors), sslcontext,
+				keystorepath);
 	}
 
 	public void addPluginResourceListener(PluginResourceListener listener) {
@@ -190,7 +202,8 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 	}
 
 	public final void setIDEPluginProperties(IDEPluginProperties properties,
-			List<? extends ContributedExtensionConfiguration<IEnvironmentUserParameterContributor>> environmentParameterContributors) {
+			List<? extends ContributedExtensionConfiguration<IEnvironmentUserParameterContributor>> environmentParameterContributors)
+			throws IOException {
 		synchronized (configurationChangeLock) {
 			sakerPlugin.setIDEPluginProperties(properties);
 			Set<ExtensionDisablement> prevdisablements = getExtensionDisablements(
@@ -210,8 +223,9 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		new Job("Updating environment parameters") {
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
-				sakerPlugin.updateForPluginProperties(getIDEPluginPropertiesWithEnvironmentParameterContributions(
-						sakerPlugin.getIDEPluginProperties(), monitor));
+				IDEPluginProperties pluginproperties = getIDEPluginPropertiesWithEnvironmentParameterContributions(
+						sakerPlugin.getIDEPluginProperties(), monitor);
+				sakerPlugin.updateForPluginProperties(pluginproperties);
 				return Status.OK_STATUS;
 			}
 		}.schedule();
@@ -317,23 +331,40 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 				console.activate();
 			}
 		});
+		e.printStackTrace();
 	}
 
 	@Override
+	@Deprecated
 	public void displayException(Throwable e) {
-		PlatformUI.getWorkbench().getDisplay().asyncExec(() -> {
-			synchronized (consoleLock) {
-				if (closed) {
-					return;
-				}
-				SakerPluginInfoConsole console = getConsoleImplOnUIThread();
-				console.printException(e);
-				console.activate();
-			}
-		});
-		e.printStackTrace();
-		Activator.getDefault().getLog()
-				.log(new Status(Status.ERROR, Activator.PLUGIN_ID, "Saker.build plugin exception.", e));
+		this.displayException(SakerLog.SEVERITY_ERROR, "Saker.build plugin exception.", e);
+	}
+
+	@Override
+	public void displayException(int severity, String message, Throwable exc) {
+		printExceptionStackTrace(exc);
+
+		IStatus status = createDisplayExceptionStatus(severity, message, exc);
+		Activator.getDefault().getLog().log(status);
+	}
+
+	public static IStatus createDisplayExceptionStatus(int severity, String message, Throwable exc) {
+		int statusseverity;
+		switch (severity) {
+			case SakerLog.SEVERITY_WARNING:
+				statusseverity = Status.WARNING;
+				break;
+			case SakerLog.SEVERITY_ERROR:
+				statusseverity = Status.ERROR;
+				break;
+			case SakerLog.SEVERITY_INFO:
+				statusseverity = Status.INFO;
+				break;
+			default:
+				statusseverity = Status.INFO;
+				break;
+		}
+		return new Status(statusseverity, Activator.PLUGIN_ID, message, exc);
 	}
 
 	@Override
@@ -537,7 +568,8 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 
 	public static void readExtensionDisablements(StructuredObjectInput configurationobj,
 			Set<ExtensionDisablement> extensiondisablements) throws IOException {
-		try (StructuredArrayObjectInput disablementsarray = configurationobj.readArray("extension_disablements")) {
+		try (StructuredArrayObjectInput disablementsarray = configurationobj
+				.readArray(NODE_ARRAY_EXTENSION_DISABLEMENTS)) {
 			if (disablementsarray != null) {
 				int len = disablementsarray.length();
 				for (int i = 0; i < len; i++) {
@@ -556,7 +588,7 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		if (ObjectUtils.isNullOrEmpty(disablements)) {
 			return;
 		}
-		try (StructuredArrayObjectOutput out = configurationobjout.writeArray("extension_disablements")) {
+		try (StructuredArrayObjectOutput out = configurationobjout.writeArray(NODE_ARRAY_EXTENSION_DISABLEMENTS)) {
 			for (ExtensionDisablement disablement : disablements) {
 				out.write(disablement.getExtensionUniqueIdentifier());
 			}
@@ -579,13 +611,16 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 
 	private void writePluginConfigurationFile(Iterable<? extends ExtensionDisablement> disablements)
 			throws IOException {
-		try (OutputStream os = Files.newOutputStream(pluginConfigurationFilePath)) {
+		Path propfilepath = pluginConfigurationFilePath;
+		Path tempfilepath = propfilepath.resolveSibling(propfilepath.getFileName() + "." + UUID.randomUUID() + ".temp");
+		try (OutputStream os = Files.newOutputStream(tempfilepath)) {
 			try (XMLStructuredWriter writer = new XMLStructuredWriter(os)) {
 				try (StructuredObjectOutput configurationobj = writer.writeObject(CONFIG_FILE_ROOT_OBJECT_NAME)) {
 					writeExtensionDisablements(configurationobj, disablements);
 				}
 			}
 		}
+		Files.move(tempfilepath, propfilepath, StandardCopyOption.REPLACE_EXISTING);
 	}
 
 	private IDEPluginProperties getIDEPluginPropertiesWithEnvironmentParameterContributions(

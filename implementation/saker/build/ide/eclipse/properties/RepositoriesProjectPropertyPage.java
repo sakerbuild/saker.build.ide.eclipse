@@ -15,6 +15,7 @@
  */
 package saker.build.ide.eclipse.properties;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -64,6 +65,7 @@ import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.RepositoryIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class RepositoriesProjectPropertyPage extends PropertyPage {
@@ -518,8 +520,13 @@ public class RepositoriesProjectPropertyPage extends PropertyPage {
 		for (TreePropertyItem<RepositoryIDEProperty> repoitem : repositories) {
 			repos.add(repoitem.property);
 		}
-		ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
-				.setRepositories(repos).build());
+		try {
+			ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
+					.setRepositories(repos).build());
+		} catch ( IOException e) {
+			ideProject.displayException(SakerLog.SEVERITY_ERROR, "Failed to save project properties.", e);
+			return false;
+		}
 		return true;
 	}
 }

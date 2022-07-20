@@ -15,6 +15,7 @@
  */
 package saker.build.ide.eclipse.properties;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -45,6 +46,7 @@ import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class UserParametersEnvironmentPreferencePage extends PreferencePage implements IWorkbenchPreferencePage {
@@ -199,10 +201,15 @@ public class UserParametersEnvironmentPreferencePage extends PreferencePage impl
 
 	@Override
 	public boolean performOk() {
-		plugin.setIDEPluginProperties(
-				SimpleIDEPluginProperties.builder(plugin.getIDEPluginProperties())
-						.setUserParameters(tableHandler.getOptions()).build(),
-				extensionHandler.getExtensionContributors());
+		try {
+			plugin.setIDEPluginProperties(
+					SimpleIDEPluginProperties.builder(plugin.getIDEPluginProperties())
+							.setUserParameters(tableHandler.getOptions()).build(),
+					extensionHandler.getExtensionContributors());
+		} catch (IOException e) {
+			plugin.displayException(SakerLog.SEVERITY_ERROR, "Failed to save plugin properties.", e);
+			return false;
+		}
 		return true;
 	}
 

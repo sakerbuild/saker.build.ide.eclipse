@@ -15,6 +15,7 @@
  */
 package saker.build.ide.eclipse.properties;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -47,6 +48,7 @@ import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class UserParametersProjectPropertyPage extends PropertyPage {
@@ -256,10 +258,15 @@ public class UserParametersProjectPropertyPage extends PropertyPage {
 
 	@Override
 	public boolean performOk() {
-		ideProject.setIDEProjectProperties(
-				SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
-						.setUserParameters(tableHandler.getOptions()).build(),
-				extensionHandler.getExtensionContributors());
+		try {
+			ideProject.setIDEProjectProperties(
+					SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
+							.setUserParameters(tableHandler.getOptions()).build(),
+					extensionHandler.getExtensionContributors());
+		} catch (IOException e) {
+			ideProject.displayException(SakerLog.SEVERITY_ERROR, "Failed to save project properties.", e);
+			return false;
+		}
 		return true;
 	}
 

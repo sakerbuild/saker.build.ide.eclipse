@@ -15,6 +15,7 @@
  */
 package saker.build.ide.eclipse.properties;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -61,6 +62,7 @@ import saker.build.ide.support.properties.MountPathIDEProperty;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.ProviderMountIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
 
@@ -457,9 +459,14 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 
 	@Override
 	public boolean performOk() {
-		ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
-				.setWorkingDirectory(workingDirectoryText.getText()).setBuildDirectory(buildDirectoryText.getText())
-				.setMirrorDirectory(mirrorDirectoryText.getText()).setMounts(new LinkedHashSet<>(mounts)).build());
+		try {
+			ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
+					.setWorkingDirectory(workingDirectoryText.getText()).setBuildDirectory(buildDirectoryText.getText())
+					.setMirrorDirectory(mirrorDirectoryText.getText()).setMounts(new LinkedHashSet<>(mounts)).build());
+		} catch (IOException e) {
+			ideProject.displayException(SakerLog.SEVERITY_ERROR, "Failed to save project properties.", e);
+			return false;
+		}
 		return true;
 	}
 

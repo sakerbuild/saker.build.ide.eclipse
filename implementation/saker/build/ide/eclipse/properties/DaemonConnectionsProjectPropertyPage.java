@@ -15,6 +15,7 @@
  */
 package saker.build.ide.eclipse.properties;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -69,6 +70,7 @@ import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 import saker.build.ide.support.ui.ExecutionDaemonSelector;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
@@ -354,7 +356,8 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 		useClientsAsClustersButton = new Button(composite, SWT.CHECK);
 		useClientsAsClustersButton.setText("Use clients as build clusters");
 		useClientsAsClustersButton.setSelection(useClientsAsClusters);
-		GridDataFactory.defaultsFor(useClientsAsClustersButton).span(2, 1).applyTo(useClientsAsClustersButton);;
+		GridDataFactory.defaultsFor(useClientsAsClustersButton).span(2, 1).applyTo(useClientsAsClustersButton);
+		;
 
 		validateProperties();
 
@@ -478,10 +481,15 @@ public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
 	public boolean performOk() {
 		Set<DaemonConnectionIDEProperty> connections = getDaemonConnectionIDEProperties();
 		String execdaemonname = daemonSelector.getSelectedExecutionDaemonName();
-		ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
-				.setConnections(ImmutableUtils.makeImmutableLinkedHashSet((connections)))
-				.setUseClientsAsClusters(useClientsAsClustersButton.getSelection())
-				.setExecutionDaemonConnectionName(execdaemonname).build());
+		try {
+			ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
+					.setConnections(ImmutableUtils.makeImmutableLinkedHashSet((connections)))
+					.setUseClientsAsClusters(useClientsAsClustersButton.getSelection())
+					.setExecutionDaemonConnectionName(execdaemonname).build());
+		} catch (IOException e) {
+			ideProject.displayException(SakerLog.SEVERITY_ERROR, "Failed to save project properties.", e);
+			return false;
+		}
 		return true;
 	}
 

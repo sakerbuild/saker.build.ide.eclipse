@@ -27,6 +27,9 @@ import org.eclipse.core.resources.IResourceDeltaVisitor;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 
 import saker.build.thirdparty.saker.util.io.IOUtils;
 
@@ -40,11 +43,25 @@ public class ImplActivator implements AutoCloseable, IResourceChangeListener {
 		return sakerEclipseIDEPlugin;
 	}
 
-	public void start(ImplementationStartArguments args) throws IOException {
+	public void start(ImplementationStartArguments args) {
 		ResourcesPlugin.getWorkspace().addResourceChangeListener(this);
 		sakerEclipseIDEPlugin = new EclipseSakerIDEPlugin();
 		sakerEclipseIDEPlugin.initialize(args.sakerJarPath,
 				Paths.get(args.activator.getStateLocation().toFile().getAbsolutePath()));
+
+		new Job("Initializing saker.build plugin") {
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				try {
+					sakerEclipseIDEPlugin.start(monitor);
+				} catch (Exception e) {
+					//display just in case as well
+					sakerEclipseIDEPlugin.displayException(e);
+					return new Status(IStatus.ERROR, Activator.PLUGIN_ID, "Failed to initialize saker.build plugin", e);
+				}
+				return Status.OK_STATUS;
+			}
+		}.schedule();
 	}
 
 	public EclipseSakerIDEProject getOrCreateSakerProject(IProject project) {

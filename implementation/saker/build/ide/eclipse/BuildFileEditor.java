@@ -1441,8 +1441,14 @@ public class BuildFileEditor extends TextEditor implements ModelUpdateListener {
 //		return super.affectsTextPresentation(event);
 	}
 
-	private ScriptSyntaxModel getUpdatedModel() {
-		return editorModel.getUpToDateModel();
+	protected ScriptSyntaxModel getUpdatedModel() {
+		try {
+			return editorModel.getUpToDateModel();
+		} catch (InterruptedException e) {
+			// TODO better exception displayer?
+			ImplActivator.getDefault().getEclipseIDEPlugin().displayException(e);
+			return null;
+		}
 	}
 
 	@Override

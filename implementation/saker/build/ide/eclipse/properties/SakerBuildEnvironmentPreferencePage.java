@@ -15,6 +15,10 @@
  */
 package saker.build.ide.eclipse.properties;
 
+import java.io.IOException;
+
+import org.eclipse.jface.dialogs.IMessageProvider;
+import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.preference.PreferencePage;
 import org.eclipse.swt.SWT;
@@ -29,6 +33,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
@@ -40,10 +45,12 @@ import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
 import saker.build.ide.support.ui.ExceptionFormatSelector;
 import saker.build.meta.Versions;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class SakerBuildEnvironmentPreferencePage extends PreferencePage implements IWorkbenchPreferencePage {
 	private EclipseSakerIDEPlugin plugin;
+	private String authKeyStorePath;
 
 	private IDEPluginProperties properties;
 	private Combo exceptionFormatCombo;
@@ -51,6 +58,8 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 
 	private Button actsAsServerButton;
 	private Text portText;
+
+	private Label authKeyStorePathLabel;
 
 	public SakerBuildEnvironmentPreferencePage() {
 		super();
@@ -107,10 +116,8 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 		daemongroup.setText("Build daemon");
 
 		Composite dgcomposite = new Composite(daemongroup, SWT.NONE);
-		GridLayout dglayout = new GridLayout(2, false);
-		dgcomposite.setLayout(dglayout);
-
-		dgcomposite.setLayoutData(GridDataFactory.fillDefaults().grab(true, true).create());
+		dgcomposite.setLayout(new GridLayout(2, false));
+		GridDataFactory.fillDefaults().grab(true, true).applyTo(dgcomposite);
 
 		SakerBuildProjectPropertyPage.addLabelWithText(dgcomposite, "Port number (default 3500):");
 		portText = new Text(dgcomposite, SWT.BORDER);
@@ -124,6 +131,23 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 		GridDataFactory.defaultsFor(portText).hint(100, SWT.DEFAULT).grab(false, false).applyTo(portText);
 		actsAsServerButton = new Button(dgcomposite, SWT.CHECK);
 		actsAsServerButton.setText("Acts as server");
+		GridDataFactory.defaultsFor(portText).span(2, 1).applyTo(actsAsServerButton);
+
+		SakerBuildProjectPropertyPage.addLabelWithText(dgcomposite, "Authentication keystore: ");
+
+		Composite keystorecomposite = new Composite(dgcomposite, SWT.NONE);
+		keystorecomposite.setLayout(new GridLayout(2, false));
+		GridDataFactory.fillDefaults().grab(true, true).applyTo(keystorecomposite);
+
+		authKeyStorePathLabel = new Label(keystorecomposite, SWT.NONE);
+		authKeyStorePathLabel.setLayoutData(GridDataFactory.fillDefaults().hint(SWT.DEFAULT, SWT.DEFAULT)
+				.align(SWT.FILL, SWT.CENTER).grab(true, false).create());
+
+		Button modifyauthkeystorebutton = new Button(keystorecomposite, SWT.PUSH);
+		modifyauthkeystorebutton.setText("Modify...");
+		modifyauthkeystorebutton.addSelectionListener(SelectionListener.widgetSelectedAdapter(e -> {
+			//TODO
+		}));
 
 		populateControls();
 
@@ -141,6 +165,12 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 
 		exceptionFormatCombo.setItems(exceptionFormatSelector.getLabels().toArray(ObjectUtils.EMPTY_STRING_ARRAY));
 		exceptionFormatCombo.select(exceptionFormatSelector.getSelectedIndex());
+
+		if (authKeyStorePath == null) {
+			authKeyStorePathLabel.setText("(None)");
+		} else {
+			authKeyStorePathLabel.setText(authKeyStorePath);
+		}
 	}
 
 	private void validateProperties() {
@@ -177,12 +207,56 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 
 	@Override
 	public boolean performOk() {
-		plugin.setIDEPluginProperties(
-				SimpleIDEPluginProperties.builder(plugin.getIDEPluginProperties()).setPort(portText.getText().trim())
-						.setActsAsServer(actsAsServerButton.getSelection())
-						.setExceptionFormat(exceptionFormatSelector.getSelectedFormat()).build(),
-				plugin.getEnvironmentParameterContributors());
+		SimpleIDEPluginProperties.Builder builder = SimpleIDEPluginProperties.builder(plugin.getIDEPluginProperties())
+				.setPort(portText.getText().trim()).setActsAsServer(actsAsServerButton.getSelection())
+				.setExceptionFormat(exceptionFormatSelector.getSelectedFormat());
+		try {
+			plugin.setIDEPluginProperties(builder.build(), plugin.getEnvironmentParameterContributors());
+		} catch (IOException e) {
+			plugin.displayException(SakerLog.SEVERITY_ERROR, "Failed to save plugin properties.", e);
+			return false;
+		}
 		return true;
+	}
+
+	private class AuthKeyStoreDialog extends TitleAreaDialog {
+
+		public AuthKeyStoreDialog(Shell parentShell) {
+			super(parentShell);
+		}
+
+		@Override
+		public boolean isHelpAvailable() {
+			return false;
+		}
+
+		@Override
+		protected void configureShell(Shell newShell) {
+			super.configureShell(newShell);
+			newShell.setText("Daemon authentication keystore");
+		}
+
+		@Override
+		public void create() {
+			super.create();
+			setTitle("Daemon authentication keystore");
+			resetMessage();
+		}
+
+		private void resetMessage() {
+			setMessage("Specify the keystore to use for authentication with the build daemon.", IMessageProvider.NONE);
+		}
+
+		@Override
+		protected Control createDialogArea(Composite parent) {
+			Composite area = (Composite) super.createDialogArea(parent);
+			Composite container = new Composite(area, SWT.NONE);
+			container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+			GridLayout layout = new GridLayout(2, false);
+			container.setLayout(layout);
+
+			return area;
+		}
 	}
 
 }

@@ -15,6 +15,7 @@
  */
 package saker.build.ide.eclipse.properties;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -75,6 +76,7 @@ import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.ScriptConfigurationIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class ScriptConfigurationProjectPropertyPage extends PropertyPage {
@@ -677,9 +679,14 @@ public class ScriptConfigurationProjectPropertyPage extends PropertyPage {
 		for (TreePropertyItem<ScriptConfigurationIDEProperty> scitem : scriptConfigs) {
 			scriptconfigurations.add(scitem.property);
 		}
-		ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
-				.setScriptConfigurations(scriptconfigurations)
-				.setScriptModellingExclusions(new TreeSet<>(exclusionWildcards)).build());
+		try {
+			ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
+					.setScriptConfigurations(scriptconfigurations)
+					.setScriptModellingExclusions(new TreeSet<>(exclusionWildcards)).build());
+		} catch (IOException e) {
+			ideProject.displayException(SakerLog.SEVERITY_ERROR, "Failed to save project properties.", e);
+			return false;
+		}
 		return true;
 	}
 

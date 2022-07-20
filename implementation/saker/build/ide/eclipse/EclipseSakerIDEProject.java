@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,6 +40,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.WeakHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -138,6 +140,7 @@ import saker.build.runtime.environment.BuildTaskExecutionResultImpl;
 import saker.build.runtime.execution.BuildUserPromptHandler;
 import saker.build.runtime.execution.ExecutionParametersImpl;
 import saker.build.runtime.execution.ExecutionProgressMonitor;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.runtime.execution.SakerLog.CommonExceptionFormat;
 import saker.build.runtime.execution.SakerLog.ExceptionFormat;
 import saker.build.runtime.execution.SecretInputReader;
@@ -513,7 +516,8 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 	}
 
 	public void setIDEProjectProperties(IDEProjectProperties properties,
-			List<ContributedExtensionConfiguration<IExecutionUserParameterContributor>> executionParameterContributors) {
+			List<ContributedExtensionConfiguration<IExecutionUserParameterContributor>> executionParameterContributors)
+			throws IOException {
 		synchronized (configurationChangeLock) {
 			try {
 				projectPropertiesChanging();
@@ -524,13 +528,14 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				sakerProject.setIDEProjectProperties(properties);
 				Set<ExtensionDisablement> prevdisablements = EclipseSakerIDEPlugin
 						.getExtensionDisablements(this.executionParameterContributors);
-				this.executionParameterContributors = executionParameterContributors;
 				Set<ExtensionDisablement> currentdisablements = EclipseSakerIDEPlugin
-						.getExtensionDisablements(this.executionParameterContributors);
+						.getExtensionDisablements(executionParameterContributors);
 				if (!prevdisablements.equals(currentdisablements)) {
 					try {
 						writeProjectConfigurationFile(currentdisablements);
+						this.executionParameterContributors = executionParameterContributors;
 					} catch (IOException e) {
+						//this failed, but continue nonetheless, as setting the main properties is successful
 						displayException(e);
 					}
 				}
@@ -547,7 +552,7 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		}
 	}
 
-	public void setIDEProjectProperties(IDEProjectProperties properties) {
+	public void setIDEProjectProperties(IDEProjectProperties properties) throws IOException {
 		synchronized (configurationChangeLock) {
 			try {
 				projectPropertiesChanging();
@@ -677,11 +682,18 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 	}
 
 	@Override
+	@Deprecated
 	public void displayException(Throwable e) {
-		//XXX project specific exception display
-		eclipseSakerPlugin.printExceptionStackTrace(e);
-		Activator.getDefault().getLog()
-				.log(new Status(Status.ERROR, Activator.PLUGIN_ID, "Error on project: " + ideProject.getName(), e));
+		this.displayException(SakerLog.SEVERITY_ERROR, "Saker.build project exception: " + ideProject.getName(), e);
+	}
+
+	@Override
+	public void displayException(int severity, String message, Throwable exc) {
+		if (message == null) {
+			message = "Saker.build project exception: " + ideProject.getName();
+		}
+		eclipseSakerPlugin.printExceptionStackTrace(exc);
+		Activator.getDefault().getLog().log(EclipseSakerIDEPlugin.createDisplayExceptionStatus(severity, message, exc));
 	}
 
 	private static final class ProjectBuildConsoleInterfaceAccessor implements BuildInterfaceAccessor {
@@ -994,8 +1006,13 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				}
 				TaskResultCollection resultcollection = result.getTaskResultCollection();
 				if (resultcollection != null) {
-					Collection<? extends IDEConfiguration> ideconfigs = resultcollection.getIDEConfigurations();
-					addIDEConfigurations(ideconfigs);
+					try {
+						Collection<? extends IDEConfiguration> ideconfigs = resultcollection.getIDEConfigurations();
+						addIDEConfigurations(ideconfigs);
+					} catch (Exception e) {
+						//do not throw IDE configuration related exception as this doesn't caues the build to fail
+						displayException(SakerLog.SEVERITY_WARNING, "Failed to set IDE configurations.", e);
+					}
 				}
 				return;
 			} catch (Throwable e) {
@@ -1049,13 +1066,16 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 
 	private void writeProjectConfigurationFile(Iterable<? extends ExtensionDisablement> disablements)
 			throws IOException {
-		try (OutputStream os = Files.newOutputStream(projectConfigurationFilePath)) {
+		Path propfilepath = projectConfigurationFilePath;
+		Path tempfilepath = propfilepath.resolveSibling(propfilepath.getFileName() + "." + UUID.randomUUID() + ".temp");
+		try (OutputStream os = Files.newOutputStream(tempfilepath)) {
 			try (XMLStructuredWriter writer = new XMLStructuredWriter(os)) {
 				try (StructuredObjectOutput configurationobj = writer.writeObject(CONFIG_FILE_ROOT_OBJECT_NAME)) {
 					EclipseSakerIDEPlugin.writeExtensionDisablements(configurationobj, disablements);
 				}
 			}
 		}
+		Files.move(tempfilepath, propfilepath, StandardCopyOption.REPLACE_EXISTING);
 	}
 
 	private void projectPropertiesChanging() {
@@ -1093,7 +1113,7 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		return builder.build();
 	}
 
-	private void addIDEConfigurations(Collection<? extends IDEConfiguration> ideconfigs) {
+	private void addIDEConfigurations(Collection<? extends IDEConfiguration> ideconfigs) throws IOException {
 		if (ObjectUtils.isNullOrEmpty(ideconfigs)) {
 			return;
 		}
