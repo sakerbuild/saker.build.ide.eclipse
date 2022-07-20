@@ -50,7 +50,7 @@ public class ImplementationClassLoader extends ClassLoader {
 			byte[] classbytes;
 			try (InputStream is = entry.openStream()) {
 				classbytes = readStreamFully(is);
-			} catch (IOException e) {
+			} catch (Exception e) {
 				throw new ClassNotFoundException(name, e);
 			}
 			return defineClass(name, classbytes, 0, classbytes.length);
@@ -61,7 +61,7 @@ public class ImplementationClassLoader extends ClassLoader {
 				byte[] classbytes;
 				try (InputStream is = jf.getInputStream(jfentry)) {
 					classbytes = readStreamFully(is);
-				} catch (IOException e) {
+				} catch (Exception e) { // ZipFile.ensureOpen throws IllegalStateException so catch all kinds of exceptions
 					throw new ClassNotFoundException(name, e);
 				}
 				return defineClass(name, classbytes, 0, classbytes.length);
