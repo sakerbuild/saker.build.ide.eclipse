@@ -62,7 +62,6 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner {
 
 	@Override
 	public void process(IScriptProposalsRoot proposalsroot) {
-		System.out.println("SakerScriptProposalDesigner.process()");
 		boolean darktheme = BuildFileEditor.isCurrentThemeDark();
 		for (IScriptProposalEntry proposal : proposalsroot.getProposals()) {
 			if (proposal == null) {

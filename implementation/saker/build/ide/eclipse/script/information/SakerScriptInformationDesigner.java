@@ -72,7 +72,6 @@ public class SakerScriptInformationDesigner implements IScriptInformationDesigne
 	}
 
 	public static void processImpl(IScriptInformationRoot informationroot) {
-		System.out.println("SakerScriptInformationDesigner.process()");
 		List<? extends IScriptInformationEntry> entries = informationroot.getEntries();
 		processEntries(entries);
 	}
