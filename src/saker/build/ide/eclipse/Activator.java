@@ -34,7 +34,6 @@ import java.util.zip.ZipFile;
 
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.FileLocator;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.resource.CompositeImageDescriptor;
 import org.eclipse.jface.resource.ImageDescriptor;
@@ -116,17 +115,22 @@ public class Activator extends AbstractUIPlugin {
 		plugin = Activator.this;
 		super.start(context);
 
-		Path sakerjarpath = exportEmbeddedJar(SAKER_BUILD_RUNTIME_JAR_PATH);
-		Path idesupportjarpath = exportEmbeddedJar(IDESUPPORT_RUNTIME_JAR_PATH);
+		try {
+			Path sakerjarpath = exportEmbeddedJar(SAKER_BUILD_RUNTIME_JAR_PATH);
+			Path idesupportjarpath = exportEmbeddedJar(IDESUPPORT_RUNTIME_JAR_PATH);
 
-		this.sakerJar = createMultiReleaseJarFile(sakerjarpath);
-		this.ideSupportJar = createMultiReleaseJarFile(idesupportjarpath);
+			this.sakerJar = createMultiReleaseJarFile(sakerjarpath);
+			this.ideSupportJar = createMultiReleaseJarFile(idesupportjarpath);
 
-		implClassLoader = new ImplementationClassLoader(context.getBundle(), Arrays.asList(sakerJar, ideSupportJar));
-		Class<?> c = Class.forName("saker.build.ide.eclipse.ImplActivator", false, implClassLoader);
-		implActivator = c.getConstructor().newInstance();
-		c.getMethod("start", ImplementationStartArguments.class).invoke(implActivator,
-				new ImplementationStartArguments(this, context, sakerjarpath));
+			implClassLoader = new ImplementationClassLoader(context.getBundle(),
+					Arrays.asList(sakerJar, ideSupportJar));
+			Class<?> c = Class.forName("saker.build.ide.eclipse.ImplActivator", false, implClassLoader);
+			implActivator = c.getConstructor().newInstance();
+			c.getMethod("start", ImplementationStartArguments.class).invoke(implActivator,
+					new ImplementationStartArguments(this, context, sakerjarpath));
+		} catch (Exception e) {
+			getLog().error("Failed to start saker.build plugin.", e);
+		}
 
 	}
 
@@ -137,23 +141,21 @@ public class Activator extends AbstractUIPlugin {
 			try {
 				((AutoCloseable) implActivator).close();
 			} catch (Exception e) {
-				getLog().log(
-						new Status(Status.ERROR, PLUGIN_ID, "Failed to close saker.build plugin implementation.", e));
+				getLog().error("Failed to close saker.build plugin implementation.", e);
 			}
 		}
 		if (ideSupportJar != null) {
 			try {
 				ideSupportJar.close();
 			} catch (IOException e) {
-				getLog().log(new Status(Status.ERROR, PLUGIN_ID,
-						"Failed to close saker.build IDE support implementation JAR.", e));
+				getLog().error("Failed to close saker.build IDE support implementation JAR.", e);
 			}
 		}
 		if (sakerJar != null) {
 			try {
 				sakerJar.close();
 			} catch (IOException e) {
-				getLog().log(new Status(Status.ERROR, PLUGIN_ID, "Failed to close saker.build implementation JAR.", e));
+				getLog().error("Failed to close saker.build implementation JAR.", e);
 			}
 		}
 		super.stop(context);

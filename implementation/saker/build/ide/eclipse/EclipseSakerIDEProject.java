@@ -59,7 +59,6 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.QualifiedName;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.IconAndMessageDialog;
@@ -193,6 +192,10 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 
 	public EclipseSakerIDEProject(EclipseSakerIDEPlugin eclipseSakerIDEPlugin, SakerIDEProject sakerproject,
 			IProject project) {
+		//check nulls just in case
+		Objects.requireNonNull(eclipseSakerIDEPlugin, "eclipse saker IDE plugin");
+		Objects.requireNonNull(sakerproject, "saker project");
+		Objects.requireNonNull(project, "project");
 		this.eclipseSakerPlugin = eclipseSakerIDEPlugin;
 		this.sakerProject = sakerproject;
 		this.ideProject = project;
@@ -213,7 +216,8 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 			}
 		} catch (NoSuchFileException e) {
 		} catch (IOException e) {
-			displayException(e);
+			displayException(SakerLog.SEVERITY_ERROR,
+					"Failed to read saker project configuration for project: " + ideProject.getName(), e);
 		}
 
 		IExtensionRegistry extensionregistry = Platform.getExtensionRegistry();
@@ -225,26 +229,23 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				IExtension extension = configelem.getDeclaringExtension();
 				String extensionsimpleid = extension.getUniqueIdentifier();
 				if (extensionsimpleid == null) {
-					displayException(new IllegalArgumentException(
-							"Extension " + EclipseSakerIDEPlugin.getExtensionName(extension)
-									+ " doesn't declare an unique identifier. ("
-									+ Activator.EXTENSION_POINT_ID_EXECUTION_USER_PARAMETER_CONTRIBUTOR + ")"));
-					continue;
+					throw new IllegalArgumentException("Extension " + EclipseSakerIDEPlugin.getExtensionName(extension)
+							+ " doesn't declare an unique identifier. ("
+							+ Activator.EXTENSION_POINT_ID_EXECUTION_USER_PARAMETER_CONTRIBUTOR + ")");
 				}
 				boolean enabled = !ExtensionDisablement.isDisabled(extensiondisablements, extension);
 
 				Object contributor = configelem.createExecutableExtension("class");
 				if (!(contributor instanceof IExecutionUserParameterContributor)) {
-					displayException(
-							new ClassCastException("Extension " + EclipseSakerIDEPlugin.getExtensionName(extension)
-									+ " doesn't implement " + IExecutionUserParameterContributor.class.getName() + ". ("
-									+ Activator.EXTENSION_POINT_ID_EXECUTION_USER_PARAMETER_CONTRIBUTOR + ")"));
-					continue;
+					throw new ClassCastException("Extension " + EclipseSakerIDEPlugin.getExtensionName(extension)
+							+ " doesn't implement " + IExecutionUserParameterContributor.class.getName() + ". ("
+							+ Activator.EXTENSION_POINT_ID_EXECUTION_USER_PARAMETER_CONTRIBUTOR + ")");
 				}
 				executionParameterContributors.add(new ContributedExtensionConfiguration<>(
 						(IExecutionUserParameterContributor) contributor, configelem, enabled));
-			} catch (CoreException e) {
-				displayException(e);
+			} catch (Exception e) {
+				displayException(SakerLog.SEVERITY_ERROR,
+						"Failed to initialize extension on project: " + ideProject.getName(), e);
 			}
 		}
 		executionParameterContributors = ImmutableUtils.unmodifiableList(executionParameterContributors);
@@ -347,16 +348,19 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				throw new OperationCanceledException();
 			}
 			try {
-				Set<UserParameterModification> modifications = extension.getContributor().contribute(this,
-						unmodifiableuserparammap, monitor);
+				IExecutionUserParameterContributor contributor = extension.getContributor();
+				Set<UserParameterModification> modifications = contributor.contribute(this, unmodifiableuserparammap,
+						monitor);
 				if (ObjectUtils.isNullOrEmpty(modifications)) {
 					continue;
 				}
 				Set<String> keys = new TreeSet<>();
 				for (UserParameterModification mod : modifications) {
 					if (!keys.add(mod.getKey())) {
-						displayException(new IllegalArgumentException(
-								"Multiple execution user parameter modification for key: " + mod.getKey()));
+						displayException(SakerLog.SEVERITY_WARNING,
+								"Multiple execution user parameter modification for key: " + mod.getKey()
+										+ " by extension class: " + ObjectUtils.classNameOf(contributors)
+										+ " for project: " + ideProject.getName());
 						continue contributor_loop;
 					}
 				}
@@ -365,7 +369,8 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				}
 			} catch (Exception e) {
 				//catch other kind of exceptions too
-				displayException(e);
+				displayException(SakerLog.SEVERITY_WARNING, "Failed to apply user parameter contributor extension "
+						+ extension.getConfigurationElement().getName() + " for project: " + ideProject.getName(), e);
 			}
 		}
 		return userparamworkmap;
@@ -446,13 +451,16 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 			try {
 				Object parser = configelem.createExecutableExtension("class");
 				if (!(parser instanceof IIDEConfigurationTypeHandler)) {
-					displayException(new ClassCastException("Extension " + configelem.getName() + " doesn't implement "
-							+ IIDEConfigurationTypeHandler.class.getName()));
-					continue;
+					//throw so its properly logged
+					throw new ClassCastException("Extension " + configelem.getName() + " doesn't implement "
+							+ IIDEConfigurationTypeHandler.class.getName() + " with class: "
+							+ ObjectUtils.classNameOf(parser));
 				}
 				parsers.add((IIDEConfigurationTypeHandler) parser);
-			} catch (CoreException e) {
-				displayException(e);
+			} catch (Exception e) {
+				displayException(SakerLog.SEVERITY_ERROR,
+						"Failed to intialize IDE configuration parser extension: " + configelem.getName(), e);
+				continue;
 			}
 		}
 		if (parsers.isEmpty()) {
@@ -471,7 +479,8 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 			try {
 				entries = parser.parseConfiguration(this, configfieldmap, monitor);
 			} catch (CoreException e) {
-				eclipseSakerPlugin.displayException(e);
+				displayException(SakerLog.SEVERITY_WARNING,
+						"Failed to invoke IDE configuration parser extension: " + parser.getClass(), e);
 				continue;
 			}
 			if (ObjectUtils.isNullOrEmpty(entries)) {
@@ -504,11 +513,8 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				try {
 					rootentry.apply(monitor);
 				} catch (CoreException e) {
-					displayException(e);
-					display.asyncExec(() -> {
-						MessageDialog.openError(shell, "Apply IDE configuration",
-								"Failed to fully apply IDE configuration: " + e.toString());
-					});
+					displayException(SakerLog.SEVERITY_WARNING,
+							"Failed to apply IDE configuration: " + ideconfig.getIdentifier(), e);
 					return;
 				}
 			}
@@ -519,11 +525,7 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 			List<ContributedExtensionConfiguration<IExecutionUserParameterContributor>> executionParameterContributors)
 			throws IOException {
 		synchronized (configurationChangeLock) {
-			try {
-				projectPropertiesChanging();
-			} catch (Exception e) {
-				displayException(e);
-			}
+			projectPropertiesChanging();
 			try {
 				sakerProject.setIDEProjectProperties(properties);
 				Set<ExtensionDisablement> prevdisablements = EclipseSakerIDEPlugin
@@ -536,40 +538,27 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 						this.executionParameterContributors = executionParameterContributors;
 					} catch (IOException e) {
 						//this failed, but continue nonetheless, as setting the main properties is successful
-						displayException(e);
+						displayException(SakerLog.SEVERITY_ERROR,
+								"Failed to save configuration file for project: " + ideProject.getName(), e);
 					}
 				}
 				sakerProject.updateForProjectProperties(
 						getIDEProjectPropertiesWithExecutionParameterContributions(properties, null));
 			} finally {
-				try {
-					projectPropertiesChanged();
-				} catch (Exception e) {
-					//don't propagate exceptions
-					displayException(e);
-				}
+				projectPropertiesChanged();
 			}
 		}
 	}
 
 	public void setIDEProjectProperties(IDEProjectProperties properties) throws IOException {
 		synchronized (configurationChangeLock) {
-			try {
-				projectPropertiesChanging();
-			} catch (Exception e) {
-				displayException(e);
-			}
+			projectPropertiesChanging();
 			try {
 				sakerProject.setIDEProjectProperties(properties);
 				sakerProject.updateForProjectProperties(
 						getIDEProjectPropertiesWithExecutionParameterContributions(properties, null));
 			} finally {
-				try {
-					projectPropertiesChanged();
-				} catch (Exception e) {
-					//don't propagate exceptions
-					displayException(e);
-				}
+				projectPropertiesChanged();
 			}
 		}
 	}
@@ -606,12 +595,25 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		try {
 			ideProject.setPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME, null);
 			ideProject.setPersistentProperty(LAST_BUILD_TARGET_NAME_QUALIFIED_NAME, null);
+		} catch (Exception e) {
+			displayException(SakerLog.SEVERITY_ERROR,
+					"Failed to save last build information properties for project: " + ideProject.getName(), e);
+		}
+		try {
 			ideProject.deleteMarkers(ProjectBuilder.MARKER_TYPE, true, IProject.DEPTH_INFINITE);
-
+		} catch (Exception e) {
+			displayException(SakerLog.SEVERITY_ERROR, "Failed to delete markets on project: " + ideProject.getName(),
+					e);
+		}
+		try {
 			sakerProject.clean();
+		} catch (Exception e) {
+			displayException(SakerLog.SEVERITY_ERROR, "Failed to clean project: " + ideProject.getName(), e);
+		}
+		try {
 			ideProject.refreshLocal(IProject.DEPTH_INFINITE, monitor);
-		} catch (CoreException | IOException | InterruptedException e) {
-			displayException(e);
+		} catch (Exception e) {
+			displayException(SakerLog.SEVERITY_ERROR, "Failed to refresh project: " + ideProject.getName(), e);
 		}
 	}
 
@@ -658,8 +660,9 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				consumer.accept(lastbuildpath, lasttargetname);
 				return;
 			}
-		} catch (CoreException e) {
-			displayException(e);
+		} catch (Exception e) {
+			displayException(SakerLog.SEVERITY_ERROR,
+					"Failed to select build target for project: " + ideProject.getName(), e);
 		}
 		AskListItem chosen = askBuildTarget();
 		if (chosen != null) {
@@ -687,13 +690,16 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		this.displayException(SakerLog.SEVERITY_ERROR, "Saker.build project exception: " + ideProject.getName(), e);
 	}
 
+	public void displayException(int severity, String message) {
+		displayException(severity, message, null);
+	}
+
 	@Override
 	public void displayException(int severity, String message, Throwable exc) {
 		if (message == null) {
 			message = "Saker.build project exception: " + ideProject.getName();
 		}
-		eclipseSakerPlugin.printExceptionStackTrace(exc);
-		Activator.getDefault().getLog().log(EclipseSakerIDEPlugin.createDisplayExceptionStatus(severity, message, exc));
+		eclipseSakerPlugin.displayException(severity, message, exc);
 	}
 
 	private static final class ProjectBuildConsoleInterfaceAccessor implements BuildInterfaceAccessor {
@@ -849,9 +855,15 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				try {
 					ideProject.setPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME, scriptfile.toString());
 					ideProject.setPersistentProperty(LAST_BUILD_TARGET_NAME_QUALIFIED_NAME, targetname);
+				} catch (CoreException e) {
+					displayException(SakerLog.SEVERITY_ERROR,
+							"Failed to save last build information properties for project: " + ideProject.getName(), e);
+				}
+				try {
 					ideProject.deleteMarkers(ProjectBuilder.MARKER_TYPE, true, IProject.DEPTH_INFINITE);
 				} catch (CoreException e) {
-					displayException(e);
+					displayException(SakerLog.SEVERITY_ERROR,
+							"Failed to delete markets on project: " + ideProject.getName(), e);
 				}
 
 				SakerPath thisworking = pathconfiguration.getWorkingDirectory();
@@ -902,7 +914,9 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 										res[0] = dialog.getSelectedButton();
 									}
 								} catch (Exception e) {
-									displayException(e);
+									displayException(SakerLog.SEVERITY_ERROR,
+											"Failed to promp user during build for project: " + ideProject.getName(),
+											e);
 								}
 							});
 						}
@@ -923,7 +937,9 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 									res[0] = dialog.getResult();
 								}
 							} catch (Exception e) {
-								displayException(e);
+								displayException(SakerLog.SEVERITY_ERROR,
+										"Failed to get secret value during build for project: " + ideProject.getName(),
+										e);
 							}
 						});
 						return res[0];
@@ -976,15 +992,15 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 						}
 					} catch (OperationCanceledException e) {
 					} catch (Exception e) {
-						//CoreException, or if we fail some path parsing, converting, or others
-						displayException(e);
+						displayException(SakerLog.SEVERITY_WARNING, "Failed to refresh build directory " + builddir
+								+ " in project: " + ideProject.getName(), e);
 					}
 				}
 				if (ObjectUtils.isNullOrEmpty(projectproperties.getExecutionDaemonConnectionName())) {
 					//set derived to the mirror directory only if the build is running in-process
-					try {
-						SakerPath mirrordir = params.getMirrorDirectory();
-						if (mirrordir != null) {
+					SakerPath mirrordir = params.getMirrorDirectory();
+					if (mirrordir != null) {
+						try {
 							Path localmirrorpath = LocalFileProvider.toRealPath(mirrordir);
 							if (localmirrorpath.startsWith(projectpath)) {
 								IFolder mirrorfolder = ideProject
@@ -994,14 +1010,14 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 									mirrorfolder.setDerived(true, monitor);
 								}
 							}
+						} catch (InvalidPathException e) {
+							//the mirror path is not a valid path on the local file system
+							//ignoreable
+						} catch (OperationCanceledException e) {
+						} catch (Exception e) {
+							displayException(SakerLog.SEVERITY_WARNING, "Failed to refresh build mirror directory "
+									+ mirrordir + " in project: " + ideProject.getName(), e);
 						}
-					} catch (InvalidPathException e) {
-						//the mirror path is not a valid path on the local file system
-						//ignoreable
-					} catch (OperationCanceledException e) {
-					} catch (Exception e) {
-						//CoreException, or if we fail some path parsing, converting, or others
-						displayException(e);
 					}
 				}
 				TaskResultCollection resultcollection = result.getTaskResultCollection();
@@ -1050,7 +1066,9 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				}
 				IOException streamscloseexc = IOUtils.closeExc(out, err);
 				if (streamscloseexc != null) {
-					displayException(streamscloseexc);
+					displayException(SakerLog.SEVERITY_WARNING,
+							"Failed to close build console streams for project: " + ideProject.getName(),
+							streamscloseexc);
 				}
 				if (locked) {
 					executionLock.unlock();
@@ -1084,7 +1102,14 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 			listenercopy = ImmutableUtils.makeImmutableList(propertiesChangeListeners);
 		}
 		for (ProjectPropertiesChangeListener l : listenercopy) {
-			l.projectPropertiesChanging();
+			try {
+				l.projectPropertiesChanging();
+			} catch (Exception e) {
+				displayException(SakerLog.SEVERITY_WARNING,
+						"Failed to call projectPropertiesChanging() listener on class: " + ObjectUtils.classNameOf(l)
+								+ " for project: " + ideProject.getName(),
+						e);
+			}
 		}
 	}
 
@@ -1094,7 +1119,14 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 			listenercopy = ImmutableUtils.makeImmutableList(propertiesChangeListeners);
 		}
 		for (ProjectPropertiesChangeListener l : listenercopy) {
-			l.projectPropertiesChanged();
+			try {
+				l.projectPropertiesChanged();
+			} catch (Exception e) {
+				displayException(SakerLog.SEVERITY_WARNING,
+						"Failed to call projectPropertiesChanged() listener on class: " + ObjectUtils.classNameOf(l)
+								+ " for project: " + ideProject.getName(),
+						e);
+			}
 		}
 	}
 
@@ -1154,8 +1186,9 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 					if (newbuildfiledialogres == IDialogConstants.OK_ID) {
 						try {
 							addNewBuildFile(SakerIDEProject.DEFAULT_BUILD_FILE_NAME);
-						} catch (CoreException e) {
-							displayException(e);
+						} catch (Exception e) {
+							displayException(SakerLog.SEVERITY_ERROR,
+									"Failed to create new build script file for project: " + ideProject.getName(), e);
 						}
 					}
 					return;
@@ -1172,16 +1205,18 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 						displaybuildfile = buildfile;
 					}
 
+					Set<String> targets;
 					try {
-						Set<String> targets = getScriptTargets(buildfile);
-						if (!ObjectUtils.isNullOrEmpty(targets)) {
-							for (String target : targets) {
-								input.add(new AskListItem(buildfile, target, displaybuildfile));
-							}
+						targets = getScriptTargets(buildfile);
+					} catch (Exception e) {
+						displayException(SakerLog.SEVERITY_WARNING,
+								"Failed to determine built targets of script file: " + buildfile, e);
+						continue;
+					}
+					if (!ObjectUtils.isNullOrEmpty(targets)) {
+						for (String target : targets) {
+							input.add(new AskListItem(buildfile, target, displaybuildfile));
 						}
-					} catch (ScriptParsingFailedException | IOException e) {
-						displayException(e);
-						//XXX open dialog with errors?
 					}
 				} while (it.hasNext());
 				ListDialog listdialog = new ListDialog(activeShell);

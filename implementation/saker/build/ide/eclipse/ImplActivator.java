@@ -17,6 +17,7 @@ package saker.build.ide.eclipse;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ServiceConfigurationError;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -31,6 +32,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 
+import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.io.IOUtils;
 
 public class ImplActivator implements AutoCloseable, IResourceChangeListener {
@@ -43,20 +45,29 @@ public class ImplActivator implements AutoCloseable, IResourceChangeListener {
 		return sakerEclipseIDEPlugin;
 	}
 
+	public void displayException(int severity, String message, Throwable exc) {
+		EclipseSakerIDEPlugin.displayException(sakerEclipseIDEPlugin, severity, message, exc);
+	}
+
+	public void displayException(int severity, String message) {
+		EclipseSakerIDEPlugin.displayException(sakerEclipseIDEPlugin, severity, message);
+	}
+
 	public void start(ImplementationStartArguments args) {
 		ResourcesPlugin.getWorkspace().addResourceChangeListener(this);
-		sakerEclipseIDEPlugin = new EclipseSakerIDEPlugin();
-		sakerEclipseIDEPlugin.initialize(args.sakerJarPath,
+		EclipseSakerIDEPlugin plugininstance = new EclipseSakerIDEPlugin();
+		plugininstance.initialize(args.sakerJarPath,
 				Paths.get(args.activator.getStateLocation().toFile().getAbsolutePath()));
+
+		sakerEclipseIDEPlugin = plugininstance;
 
 		new Job("Initializing saker.build plugin") {
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
 				try {
-					sakerEclipseIDEPlugin.start(monitor);
-				} catch (Exception e) {
-					//display just in case as well
-					sakerEclipseIDEPlugin.displayException(e);
+					plugininstance.start(monitor);
+				} catch (Exception | LinkageError | StackOverflowError | OutOfMemoryError | AssertionError
+						| ServiceConfigurationError e) {
 					return new Status(IStatus.ERROR, Activator.PLUGIN_ID, "Failed to initialize saker.build plugin", e);
 				}
 				return Status.OK_STATUS;
@@ -65,12 +76,16 @@ public class ImplActivator implements AutoCloseable, IResourceChangeListener {
 	}
 
 	public EclipseSakerIDEProject getOrCreateSakerProject(IProject project) {
+		if (project == null) {
+			return null;
+		}
 		try {
 			if (project.isOpen() && project.isNatureEnabled(SakerBuildProjectNature.NATURE_ID)) {
 				return sakerEclipseIDEPlugin.getOrCreateProject(project);
 			}
 		} catch (CoreException e) {
-			sakerEclipseIDEPlugin.displayException(e);
+			EclipseSakerIDEPlugin.displayException(sakerEclipseIDEPlugin, SakerLog.SEVERITY_ERROR,
+					"Failed to open project for saker.build.", e);
 		}
 		return null;
 	}
@@ -113,7 +128,8 @@ public class ImplActivator implements AutoCloseable, IResourceChangeListener {
 		try {
 			eclipseideplugin.closeProject(project);
 		} catch (IOException e) {
-			eclipseideplugin.displayException(e);
+			eclipseideplugin.displayException(SakerLog.SEVERITY_ERROR, "Failed to close project: " + project.getName(),
+					e);
 		}
 		ProjectBuilder.closeProject(project);
 	}
@@ -150,8 +166,8 @@ public class ImplActivator implements AutoCloseable, IResourceChangeListener {
 					return true;
 				}
 			});
-		} catch (CoreException e) {
-			eclipseideplugin.displayException(e);
+		} catch (Exception e) {
+			eclipseideplugin.displayException(SakerLog.SEVERITY_WARNING, "Failed to handle resource change event.", e);
 		}
 	}
 }

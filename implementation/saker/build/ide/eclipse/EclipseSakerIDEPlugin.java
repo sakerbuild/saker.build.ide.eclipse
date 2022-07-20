@@ -39,7 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.net.ssl.SSLContext;
 
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionRegistry;
@@ -120,7 +119,7 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 			}
 		} catch (NoSuchFileException e) {
 		} catch (IOException e) {
-			displayException(e);
+			displayException(SakerLog.SEVERITY_ERROR, "Failed to read saker.build plugin configuration file.", e);
 		}
 
 		IExtensionRegistry extensionregistry = Platform.getExtensionRegistry();
@@ -132,24 +131,22 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 				IExtension extension = configelem.getDeclaringExtension();
 				String extensionsimpleid = extension.getUniqueIdentifier();
 				if (extensionsimpleid == null) {
-					displayException(new IllegalArgumentException(
+					throw new IllegalArgumentException(
 							"Extension " + getExtensionName(extension) + " doesn't declare an unique identifier. ("
-									+ Activator.EXTENSION_POINT_ID_ENVIRONMENT_USER_PARAMETER_CONTRIBUTOR + ")"));
-					continue;
+									+ Activator.EXTENSION_POINT_ID_ENVIRONMENT_USER_PARAMETER_CONTRIBUTOR + ")");
 				}
 				boolean enabled = !ExtensionDisablement.isDisabled(extensiondisablements, extension);
 
 				Object contributor = configelem.createExecutableExtension("class");
 				if (!(contributor instanceof IEnvironmentUserParameterContributor)) {
-					displayException(new ClassCastException("Extension " + getExtensionName(extension)
-							+ " doesn't implement " + IEnvironmentUserParameterContributor.class.getName() + ". ("
-							+ Activator.EXTENSION_POINT_ID_ENVIRONMENT_USER_PARAMETER_CONTRIBUTOR + ")"));
-					continue;
+					throw new ClassCastException("Extension " + getExtensionName(extension) + " doesn't implement "
+							+ IEnvironmentUserParameterContributor.class.getName() + ". ("
+							+ Activator.EXTENSION_POINT_ID_ENVIRONMENT_USER_PARAMETER_CONTRIBUTOR + ")");
 				}
 				environmentParameterContributors.add(new ContributedExtensionConfiguration<>(
 						(IEnvironmentUserParameterContributor) contributor, configelem, enabled));
-			} catch (CoreException e) {
-				displayException(e);
+			} catch (Exception e) {
+				displayException(SakerLog.SEVERITY_WARNING, "Failed to initialize saker.build plugin extension.", e);
 			}
 		}
 		environmentParameterContributors = ImmutableUtils.unmodifiableList(environmentParameterContributors);
@@ -215,7 +212,8 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 				try {
 					writePluginConfigurationFile(currentdisablements);
 				} catch (IOException e) {
-					displayException(e);
+					displayException(SakerLog.SEVERITY_ERROR, "Failed to write saker.build plugin configuration file.",
+							e);
 				}
 			}
 		}
@@ -248,7 +246,9 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 				} catch (OperationCanceledException e) {
 					return Status.CANCEL_STATUS;
 				} catch (Exception e) {
-					displayException(e);
+					//no need to display, the error result will be presented
+					return createDisplayExceptionStatus(SakerLog.SEVERITY_ERROR,
+							"Failed to reload saker.build plugin environment.", e);
 				}
 				return Status.OK_STATUS;
 			}
@@ -292,46 +292,48 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		}
 	}
 
-	public void displayStatus(IStatus status) {
-		PlatformUI.getWorkbench().getDisplay().asyncExec(() -> {
-			synchronized (consoleLock) {
-				if (closed) {
-					return;
-				}
-				SakerPluginInfoConsole console = getConsoleImplOnUIThread();
-				console.printlnError("Plugin exception occurred. See Error Log view for more information.");
-				console.activate();
-			}
-		});
-		Activator.getDefault().getLog().log(status);
-	}
+//	public void displayStatus(IStatus status) {
+//		PlatformUI.getWorkbench().getDisplay().asyncExec(() -> {
+//			synchronized (consoleLock) {
+//				if (closed) {
+//					return;
+//				}
+//				SakerPluginInfoConsole console = getConsoleImplOnUIThread();
+//				console.printlnError("Plugin exception occurred. See Error Log view for more information.");
+//				console.activate();
+//			}
+//		});
+//		Activator.getDefault().getLog().log(status);
+//	}
+//
+//	public void displayError(String message) {
+//		PlatformUI.getWorkbench().getDisplay().asyncExec(() -> {
+//			synchronized (consoleLock) {
+//				if (closed) {
+//					return;
+//				}
+//				SakerPluginInfoConsole console = getConsoleImplOnUIThread();
+//				console.printlnError(message);
+//				console.activate();
+//			}
+//		});
+//		System.err.println(message);
+//	}
 
-	public void displayError(String message) {
+	public void printExceptionStackTrace(String message, Throwable e) {
 		PlatformUI.getWorkbench().getDisplay().asyncExec(() -> {
 			synchronized (consoleLock) {
 				if (closed) {
 					return;
 				}
 				SakerPluginInfoConsole console = getConsoleImplOnUIThread();
-				console.printlnError(message);
+				console.printException(message, e);
 				console.activate();
 			}
 		});
-		System.err.println(message);
-	}
-
-	public void printExceptionStackTrace(Throwable e) {
-		PlatformUI.getWorkbench().getDisplay().asyncExec(() -> {
-			synchronized (consoleLock) {
-				if (closed) {
-					return;
-				}
-				SakerPluginInfoConsole console = getConsoleImplOnUIThread();
-				console.printException(e);
-				console.activate();
-			}
-		});
-		e.printStackTrace();
+		if (e != null) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -340,12 +342,54 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		this.displayException(SakerLog.SEVERITY_ERROR, "Saker.build plugin exception.", e);
 	}
 
+	public void displayException(int severity, String message) {
+		displayException(severity, message, null);
+	}
+
 	@Override
 	public void displayException(int severity, String message, Throwable exc) {
-		printExceptionStackTrace(exc);
+		printExceptionStackTrace(message, exc);
 
+		displayExceptionStatic(severity, message, exc);
+	}
+
+	/**
+	 * Same as {@link #displayException(int, String, Throwable)} but handles if there's no plugin instance yet.
+	 * 
+	 * @param plugin
+	 *            May be <code>null</code>. (if the plugin hasn't been initialized yet or for any other reasons)
+	 */
+	public static void displayException(EclipseSakerIDEPlugin plugin, int severity, String message, Throwable exc) {
+		if (plugin != null) {
+			plugin.displayException(severity, message, exc);
+			return;
+		}
+		displayExceptionStatic(severity, message, exc);
+	}
+
+	public static void displayException(EclipseSakerIDEPlugin plugin, int severity, String message) {
+		if (plugin != null) {
+			plugin.displayException(severity, message);
+			return;
+		}
+		displayExceptionStatic(severity, message, null);
+	}
+
+	public static void displayExceptionStatic(int severity, String message, Throwable exc) {
 		IStatus status = createDisplayExceptionStatus(severity, message, exc);
-		Activator.getDefault().getLog().log(status);
+		Activator activator = Activator.getDefault();
+		if (activator != null) {
+			activator.getLog().log(status);
+			return;
+		}
+		//plugin hasn't been initialized yet?
+		if (message != null) {
+			System.err.println(message);
+		}
+		if (exc != null) {
+			exc.printStackTrace();
+		}
+		Platform.getLog(Activator.class).log(status);
 	}
 
 	public static IStatus createDisplayExceptionStatus(int severity, String message, Throwable exc) {
@@ -417,15 +461,15 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		NavigableMap<String, String> unmodifiableuserparammap = ImmutableUtils
 				.unmodifiableNavigableMap(userparamworkmap);
 		contributor_loop:
-		for (ContributedExtensionConfiguration<? extends IEnvironmentUserParameterContributor> contributor : contributors) {
-			if (!contributor.isEnabled()) {
+		for (ContributedExtensionConfiguration<? extends IEnvironmentUserParameterContributor> extension : contributors) {
+			if (!extension.isEnabled()) {
 				continue;
 			}
 			if (monitor != null && monitor.isCanceled()) {
 				throw new OperationCanceledException();
 			}
 			try {
-				Set<UserParameterModification> modifications = contributor.getContributor().contribute(this,
+				Set<UserParameterModification> modifications = extension.getContributor().contribute(this,
 						unmodifiableuserparammap, monitor);
 				if (ObjectUtils.isNullOrEmpty(modifications)) {
 					continue;
@@ -433,8 +477,9 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 				Set<String> keys = new TreeSet<>();
 				for (UserParameterModification mod : modifications) {
 					if (!keys.add(mod.getKey())) {
-						displayException(new IllegalArgumentException(
-								"Multiple environment user parameter modification for key: " + mod.getKey()));
+						displayException(SakerLog.SEVERITY_WARNING,
+								"Multiple environment user parameter modification for key: " + mod.getKey()
+										+ " by extension class: " + ObjectUtils.classNameOf(contributors));
 						continue contributor_loop;
 					}
 				}
@@ -445,7 +490,10 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 				if (monitor != null && monitor.isCanceled()) {
 					throw new OperationCanceledException();
 				}
-				displayException(e);
+				displayException(SakerLog.SEVERITY_WARNING,
+						"Failed to apply environment user parameter contributor extension "
+								+ extension.getConfigurationElement().getName(),
+						e);
 			}
 		}
 		return userparamworkmap;
@@ -465,15 +513,14 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 			try {
 				Object contributor = configelem.createExecutableExtension("class");
 				if (!(contributor instanceof IScriptProposalDesigner)) {
-					displayException(
-							new ClassCastException("Extension " + getExtensionName(configelem.getDeclaringExtension())
-									+ " doesn't implement " + IScriptInformationDesigner.class.getName() + ". ("
-									+ Activator.EXTENSION_POINT_ID_SCRIPT_PROPOSAL_DESIGNER + ")"));
-					continue;
+					throw new ClassCastException("Extension " + getExtensionName(configelem.getDeclaringExtension())
+							+ " doesn't implement " + IScriptInformationDesigner.class.getName() + ". ("
+							+ Activator.EXTENSION_POINT_ID_SCRIPT_PROPOSAL_DESIGNER + ")");
 				}
 				designers.add((IScriptProposalDesigner) contributor);
-			} catch (CoreException e) {
-				displayException(e);
+			} catch (Exception e) {
+				displayException(SakerLog.SEVERITY_ERROR,
+						"Failed to intialize script proposal designer extension: " + configelem.getName(), e);
 				continue;
 			}
 		}
@@ -499,15 +546,14 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 			try {
 				Object contributor = configelem.createExecutableExtension("class");
 				if (!(contributor instanceof IScriptInformationDesigner)) {
-					displayException(
-							new ClassCastException("Extension " + getExtensionName(configelem.getDeclaringExtension())
-									+ " doesn't implement " + IScriptInformationDesigner.class.getName() + ". ("
-									+ Activator.EXTENSION_POINT_ID_SCRIPT_INFORMATION_DESIGNER + ")"));
-					continue;
+					throw new ClassCastException("Extension " + getExtensionName(configelem.getDeclaringExtension())
+							+ " doesn't implement " + IScriptInformationDesigner.class.getName() + ". ("
+							+ Activator.EXTENSION_POINT_ID_SCRIPT_INFORMATION_DESIGNER + ")");
 				}
 				designers.add((IScriptInformationDesigner) contributor);
-			} catch (CoreException e) {
-				displayException(e);
+			} catch (Exception e) {
+				displayException(SakerLog.SEVERITY_ERROR,
+						"Failed to intialize script information designer extension: " + configelem.getName(), e);
 				continue;
 			}
 		}
@@ -533,15 +579,14 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 			try {
 				Object contributor = configelem.createExecutableExtension("class");
 				if (!(contributor instanceof IScriptOutlineDesigner)) {
-					displayException(
-							new ClassCastException("Extension " + getExtensionName(configelem.getDeclaringExtension())
-									+ " doesn't implement " + IScriptOutlineDesigner.class.getName() + ". ("
-									+ Activator.EXTENSION_POINT_ID_SCRIPT_OUTLINE_DESIGNER + ")"));
-					continue;
+					throw new ClassCastException("Extension " + getExtensionName(configelem.getDeclaringExtension())
+							+ " doesn't implement " + IScriptOutlineDesigner.class.getName() + ". ("
+							+ Activator.EXTENSION_POINT_ID_SCRIPT_OUTLINE_DESIGNER + ")");
 				}
 				designers.add((IScriptOutlineDesigner) contributor);
-			} catch (CoreException e) {
-				displayException(e);
+			} catch (Exception e) {
+				displayException(SakerLog.SEVERITY_ERROR,
+						"Failed to intialize script outline designer extension: " + configelem.getName(), e);
 				continue;
 			}
 		}

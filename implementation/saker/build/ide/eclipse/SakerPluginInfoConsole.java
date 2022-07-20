@@ -43,10 +43,15 @@ public class SakerPluginInfoConsole extends LogHighlightingConsole implements IS
 		openedErrorStream.setColor(Display.getDefault().getSystemColor(SWT.COLOR_RED));
 	}
 
-	public void printException(Throwable exc) {
+	public void printException(String message, Throwable exc) {
 		synchronized (writeLock) {
 			try (PrintStream ps = new PrintStream(StreamUtils.closeProtectedOutputStream(openedErrorStream))) {
-				exc.printStackTrace(ps);
+				if (message != null) {
+					ps.println(message);
+				}
+				if (exc != null) {
+					exc.printStackTrace(ps);
+				}
 			}
 		}
 	}

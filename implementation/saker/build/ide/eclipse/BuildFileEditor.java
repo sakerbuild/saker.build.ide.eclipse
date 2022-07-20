@@ -127,14 +127,13 @@ import saker.build.ide.eclipse.script.outline.EclipseScriptOutlineEntry;
 import saker.build.ide.eclipse.script.outline.EclipseScriptOutlineRoot;
 import saker.build.ide.eclipse.script.proposal.EclipseScriptProposalEntry;
 import saker.build.ide.eclipse.script.proposal.EclipseScriptProposalRoot;
-import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.ui.BaseScriptInformationRoot;
 import saker.build.ide.support.ui.ScriptEditorModel;
 import saker.build.ide.support.ui.ScriptEditorModel.ModelUpdateListener;
 import saker.build.ide.support.ui.ScriptEditorModel.TokenState;
-import saker.build.runtime.environment.ForwardingImplSakerEnvironment;
 import saker.build.runtime.environment.SakerEnvironment;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.runtime.params.ExecutionPathConfiguration;
 import saker.build.runtime.params.ExecutionScriptConfiguration;
 import saker.build.scripting.ScriptParsingFailedException;
@@ -349,7 +348,8 @@ public class BuildFileEditor extends TextEditor implements ModelUpdateListener {
 				}
 				root = EclipseScriptOutlineRoot.create(structureoutline);
 			} catch (Exception e) {
-				ImplActivator.getDefault().getEclipseIDEPlugin().displayException(e);
+				ImplActivator.getDefault().displayException(SakerLog.SEVERITY_WARNING,
+						"FAiled to process script outline.", e);
 				return ObjectUtils.EMPTY_OBJECT_ARRAY;
 			}
 			IScriptOutlineDesigner designer = getScriptOutlineDesigner(root);
@@ -1445,8 +1445,9 @@ public class BuildFileEditor extends TextEditor implements ModelUpdateListener {
 		try {
 			return editorModel.getUpToDateModel();
 		} catch (InterruptedException e) {
-			// TODO better exception displayer?
-			ImplActivator.getDefault().getEclipseIDEPlugin().displayException(e);
+			// XXX better exception displayer?
+			ImplActivator.getDefault().displayException(SakerLog.SEVERITY_WARNING, "Script model updating interrupted.",
+					e);
 			return null;
 		}
 	}
@@ -1604,19 +1605,19 @@ public class BuildFileEditor extends TextEditor implements ModelUpdateListener {
 		finishDoSetInput(input);
 	}
 
-	private ScriptSyntaxModel doSetStandaloneIFileInput(IFile file, ExceptionDisplayer exceptiondisplayer) {
-		try {
-			StandaloneScriptModellingEnvironment singlemodellingenv = new StandaloneScriptModellingEnvironment(
-					new ForwardingImplSakerEnvironment(
-							ImplActivator.getDefault().getEclipseIDEPlugin().getPluginEnvironment()),
-					file);
-			singleEnvironmentsResourceCloser.add(singlemodellingenv);
-			return singlemodellingenv.getSingleModel();
-		} catch (Exception e) {
-			exceptiondisplayer.displayException(e);
-			return null;
-		}
-	}
+//	private ScriptSyntaxModel doSetStandaloneIFileInput(IFile file, ExceptionDisplayer exceptiondisplayer) {
+//		try {
+//			StandaloneScriptModellingEnvironment singlemodellingenv = new StandaloneScriptModellingEnvironment(
+//					new ForwardingImplSakerEnvironment(
+//							ImplActivator.getDefault().getEclipseIDEPlugin().getPluginEnvironment()),
+//					file);
+//			singleEnvironmentsResourceCloser.add(singlemodellingenv);
+//			return singlemodellingenv.getSingleModel();
+//		} catch (Exception e) {
+//			exceptiondisplayer.displayException(e);
+//			return null;
+//		}
+//	}
 
 	@Override
 	protected void doSetInput(IEditorInput input) throws CoreException {

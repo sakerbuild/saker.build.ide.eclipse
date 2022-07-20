@@ -67,6 +67,7 @@ import saker.build.ide.support.properties.JarClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.NestRepositoryClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.NestRepositoryFactoryServiceEnumeratorIDEProperty;
 import saker.build.runtime.classpath.HttpUrlJarFileClassPathLocation;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.runtime.params.NestRepositoryClassPathLocation;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
@@ -532,7 +533,7 @@ public class ClassPathAdditionWizard implements PropertyWizardPart<ClassPathLoca
 									.select(itemEndpointNames.indexOf(SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM));
 						} catch (RuntimeException e) {
 							//if any parsing error happens
-							project.displayException(e);
+							project.displayException(SakerLog.SEVERITY_WARNING, "Failed to parse path: " + selected, e);
 						}
 					}
 				} else if (ObjectUtils.isNullOrEmpty(endpointname)

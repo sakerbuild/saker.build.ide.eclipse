@@ -66,6 +66,7 @@ import saker.build.file.path.SakerPath;
 import saker.build.ide.configuration.IDEConfiguration;
 import saker.build.ide.eclipse.handlers.BuildProjectCommandHandler;
 import saker.build.ide.support.SakerIDEProject;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.scripting.ScriptParsingFailedException;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.function.Functionals;
@@ -104,23 +105,27 @@ public class TargetsMenuContribution extends ContributionItem {
 		EclipseSakerIDEProject sakereclipseproject = ImplActivator.getDefault().getOrCreateSakerProject(project);
 		if (sakereclipseproject == null) {
 			//not a saker project
+			boolean natureenabled = false;
 			try {
-				if (!project.isNatureEnabled(SakerBuildProjectNature.NATURE_ID)) {
-					Action natureaction = new Action("Add saker.build nature") {
-						@Override
-						public void run() {
-							try {
-								SakerBuildProjectNature.addNature(project);
-							} catch (CoreException e) {
-								ImplActivator.getDefault().getEclipseIDEPlugin().displayException(e);
-							}
+				natureenabled = project.isNatureEnabled(SakerBuildProjectNature.NATURE_ID);
+			} catch (Exception e) {
+				ImplActivator.getDefault().displayException(SakerLog.SEVERITY_ERROR,
+						"Failed to check project for saker.build nature: " + project.getName(), e);
+			}
+			if (!natureenabled) {
+				Action natureaction = new Action("Add saker.build nature") {
+					@Override
+					public void run() {
+						try {
+							SakerBuildProjectNature.addNature(project);
+						} catch (CoreException e) {
+							ImplActivator.getDefault().displayException(SakerLog.SEVERITY_ERROR,
+									"Failed to configure project with saker.build nature: " + project.getName(), e);
 						}
-					};
-					new ActionContributionItem(natureaction).fill(menu, -1);
-					return;
-				}
-			} catch (CoreException e) {
-				ImplActivator.getDefault().getEclipseIDEPlugin().displayException(e);
+					}
+				};
+				new ActionContributionItem(natureaction).fill(menu, -1);
+				return;
 			}
 		} else {
 			addTargetsMenu(sakereclipseproject, menu);
@@ -137,7 +142,8 @@ public class TargetsMenuContribution extends ContributionItem {
 
 								return Status.OK_STATUS;
 							} catch (Exception e) {
-								return new Status(IStatus.ERROR, Activator.PLUGIN_ID, "Failed to clean saker.build project", e);
+								return new Status(IStatus.ERROR, Activator.PLUGIN_ID,
+										"Failed to clean saker.build project", e);
 							}
 						}
 					};
@@ -157,7 +163,10 @@ public class TargetsMenuContribution extends ContributionItem {
 					try {
 						sakereclipseproject.addNewBuildFile(SakerIDEProject.DEFAULT_BUILD_FILE_NAME);
 					} catch (Exception e) {
-						sakereclipseproject.displayException(e);
+						sakereclipseproject.displayException(SakerLog.SEVERITY_ERROR,
+								"Failed to create new build script file for project: "
+										+ sakereclipseproject.getProject().getName(),
+								e);
 					}
 				}
 			};
@@ -197,7 +206,8 @@ public class TargetsMenuContribution extends ContributionItem {
 													new Path(fileprojectpath.toString())),
 											BuildFileEditor.ID, true);
 								} catch (PartInitException e) {
-									sakereclipseproject.displayException(e);
+									sakereclipseproject.displayException(SakerLog.SEVERITY_ERROR,
+											"Failed to open script editor for: " + fileprojectpath, e);
 								}
 							}
 						});
@@ -224,13 +234,14 @@ public class TargetsMenuContribution extends ContributionItem {
 													BuildFileEditor.ID, true);
 										} catch (PartInitException e2) {
 											e2.addSuppressed(e);
-											sakereclipseproject.displayException(e2);
+											sakereclipseproject.displayException(SakerLog.SEVERITY_ERROR,
+													"Failed to open script editor for file: " + fileprojectpath, e2);
 										}
 									}
 								});
 							} else {
-								sakereclipseproject.displayException(e);
-								BaseAction dummy = new BaseAction("Failed to parse script file");
+								//don't display the exception here, as this might happen often, and we don't want to overwhelm the logs
+								BaseAction dummy = new BaseAction("Failed to parse script file (" + e + ")");
 								dummy.setEnabled(false);
 								manager.add(dummy);
 							}

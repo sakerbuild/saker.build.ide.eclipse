@@ -128,7 +128,8 @@ public class SakerProjectBuildConsole extends LogHighlightingConsole implements 
 				SakerLog.printFormatException(exc, ps, CommonExceptionFormat.FULL);
 			}
 		} catch (IOException e) {
-			project.displayException(e);
+			project.displayException(SakerLog.SEVERITY_WARNING,
+					"Failed to print complete stacktrace for project: " + project.getProject().getName(), e);
 		}
 	}
 
