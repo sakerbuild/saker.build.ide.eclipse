@@ -32,12 +32,12 @@ steps:
   displayName: 'Check version number - tag consistency '
 - script: |
     set -e
-    curl https://ftp.halifax.rwth-aachen.de/eclipse/technology/epp/downloads/release/2022-06/R/eclipse-rcp-2022-06-R-linux-gtk-x86_64.tar.gz -o eclipse.tar.gz
+    curl https://archive.eclipse.org/technology/epp/downloads/release/2020-03/R/eclipse-rcp-2020-03-R-linux-gtk-x86_64.tar.gz -o eclipse.tar.gz
     tar -xzf "eclipse.tar.gz"
   displayName: 'Download Eclipse'
 - script: |
     set -e
-    eclipse/eclipse -vm $(JAVA_HOME_8_X64)/bin -nosplash  -application org.eclipse.ant.core.antRunner -data .. -verbose -buildfile build.xml -DbuildTempFolder=build/temp -DbuildDirectory=build -Dbuild.result.folder=build/res -Dplugin.destination=build/plugin -DbuildVersionNumber=$BUILD_VERSION_NUMBER build.update.jar
+    eclipse/eclipse -nosplash  -application org.eclipse.ant.core.antRunner -data .. -verbose -buildfile build.xml -DbuildTempFolder=build/temp -DbuildDirectory=build -Dbuild.result.folder=build/res -Dplugin.destination=build/plugin -DbuildVersionNumber=$BUILD_VERSION_NUMBER build.update.jar
   displayName: 'Build update jar'
   
 - script: |
