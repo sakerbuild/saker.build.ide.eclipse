@@ -32,14 +32,15 @@ steps:
   displayName: 'Check version number - tag consistency'
   
 - task: DownloadBuildArtifacts@0
-  buildType: 'specific'
-  project: 'saker.build'
-  pipeline: 'sakerbuild.saker.build'
-  buildVersionToDownload: 'latest'
-  branchName: 'refs/heads/master'
-  downloadType: 'single'
-  artifactName: 'export_jars_8'
-  downloadPath: '.'
+  inputs:
+    buildType: 'specific'
+    project: 'saker.build'
+    pipeline: 'sakerbuild.saker.build'
+    buildVersionToDownload: 'latest'
+    branchName: 'refs/heads/master'
+    downloadType: 'single'
+    artifactName: 'export_jars_8'
+    downloadPath: '.'
   condition: not(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
   displayName: 'Download latest saker.build JARs from master branch pipeline'
 - script: |
