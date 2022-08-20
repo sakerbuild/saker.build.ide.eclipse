@@ -45,6 +45,13 @@ steps:
   displayName: 'Download latest saker.build JARs from master branch pipeline'
 - script: |
     set -e
+    cp export_jars_8/saker.build.jar ./
+    cp export_jars_8/saker.build-ide.jar ./
+  condition: not(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
+  displayName: 'Copy artifact JARs to working directory'
+
+- script: |
+    set -e
     TAGVER=$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/')
     curl -L "https://api.nest.saker.build/bundle/download/saker.build-v$TAGVER" -o saker.build.jar
     curl -L "https://api.nest.saker.build/bundle/download/saker.build-ide-v$TAGVER" -o saker.build-ide.jar
