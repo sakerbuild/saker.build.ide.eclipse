@@ -44,6 +44,9 @@ public class SakerPluginInfoConsole extends LogHighlightingConsole implements IS
 	}
 
 	public void printException(String message, Throwable exc) {
+		if (message == null && exc == null) {
+			return;
+		}
 		synchronized (writeLock) {
 			try (PrintStream ps = new PrintStream(StreamUtils.closeProtectedOutputStream(openedErrorStream))) {
 				if (message != null) {
@@ -52,6 +55,7 @@ public class SakerPluginInfoConsole extends LogHighlightingConsole implements IS
 				if (exc != null) {
 					exc.printStackTrace(ps);
 				}
+				ps.println();
 			}
 		}
 	}
