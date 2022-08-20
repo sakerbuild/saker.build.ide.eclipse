@@ -527,12 +527,13 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		synchronized (configurationChangeLock) {
 			projectPropertiesChanging();
 			try {
-				sakerProject.setIDEProjectProperties(properties);
+				boolean propertieschanged = sakerProject.setIDEProjectProperties(properties);
 				Set<ExtensionDisablement> prevdisablements = EclipseSakerIDEPlugin
 						.getExtensionDisablements(this.executionParameterContributors);
 				Set<ExtensionDisablement> currentdisablements = EclipseSakerIDEPlugin
 						.getExtensionDisablements(executionParameterContributors);
 				if (!prevdisablements.equals(currentdisablements)) {
+					propertieschanged = true;
 					try {
 						writeProjectConfigurationFile(currentdisablements);
 						this.executionParameterContributors = executionParameterContributors;
@@ -542,8 +543,10 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 								"Failed to save configuration file for project: " + ideProject.getName(), e);
 					}
 				}
-				sakerProject.updateForProjectProperties(
-						getIDEProjectPropertiesWithExecutionParameterContributions(properties, null));
+				if (propertieschanged) {
+					sakerProject.updateForProjectProperties(
+							getIDEProjectPropertiesWithExecutionParameterContributions(properties, null));
+				}
 			} finally {
 				projectPropertiesChanged();
 			}
@@ -554,9 +557,11 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		synchronized (configurationChangeLock) {
 			projectPropertiesChanging();
 			try {
-				sakerProject.setIDEProjectProperties(properties);
-				sakerProject.updateForProjectProperties(
-						getIDEProjectPropertiesWithExecutionParameterContributions(properties, null));
+				boolean propertieschanged = sakerProject.setIDEProjectProperties(properties);
+				if (propertieschanged) {
+					sakerProject.updateForProjectProperties(
+							getIDEProjectPropertiesWithExecutionParameterContributions(properties, null));
+				}
 			} finally {
 				projectPropertiesChanged();
 			}

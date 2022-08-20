@@ -16,7 +16,16 @@
 package saker.build.ide.eclipse.properties;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 
+import javax.net.ssl.KeyManagerFactory;
+
+import org.eclipse.equinox.security.storage.StorageException;
+import org.eclipse.jface.dialogs.ErrorDialog;
+import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.IMessageProvider;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.layout.GridDataFactory;
@@ -24,6 +33,7 @@ import org.eclipse.jface.preference.PreferencePage;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyAdapter;
 import org.eclipse.swt.events.KeyEvent;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -31,6 +41,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
@@ -38,19 +49,25 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
+import saker.build.daemon.DaemonLaunchParameters;
 import saker.build.ide.eclipse.EclipseSakerIDEPlugin;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
 import saker.build.ide.support.ui.ExceptionFormatSelector;
+import saker.build.launching.LaunchConfigUtils;
 import saker.build.meta.Versions;
 import saker.build.runtime.execution.SakerLog;
+import saker.build.runtime.execution.SakerLog.CommonExceptionFormat;
+import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.util.exc.ExceptionView;
 
 public class SakerBuildEnvironmentPreferencePage extends PreferencePage implements IWorkbenchPreferencePage {
+	private static final String AUTH_KEYSTORE_LABEL_TEXT_NONE = "(None)";
+
 	private EclipseSakerIDEPlugin plugin;
-	private String authKeyStorePath;
 
 	private IDEPluginProperties properties;
 	private Combo exceptionFormatCombo;
@@ -58,8 +75,11 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 
 	private Button actsAsServerButton;
 	private Text portText;
+	private Button browseAuthKeyStoreButton;
+	private Button clearAuthKeyStoreButton;
 
 	private Label authKeyStorePathLabel;
+	private Label authKeyStoreLabel;
 
 	public SakerBuildEnvironmentPreferencePage() {
 		super();
@@ -73,8 +93,6 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 
 	@Override
 	protected Control createContents(Composite parent) {
-		noDefaultAndApplyButton();
-
 		exceptionFormatSelector = new ExceptionFormatSelector(properties);
 
 		Composite composite = new Composite(parent, SWT.NONE);
@@ -119,7 +137,7 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 		dgcomposite.setLayout(new GridLayout(2, false));
 		GridDataFactory.fillDefaults().grab(true, true).applyTo(dgcomposite);
 
-		SakerBuildProjectPropertyPage.addLabelWithText(dgcomposite, "Port number (default 3500):");
+		SakerBuildProjectPropertyPage.addLabelWithText(dgcomposite, "Port number:");
 		portText = new Text(dgcomposite, SWT.BORDER);
 		portText.addKeyListener(new KeyAdapter() {
 			@Override
@@ -131,22 +149,58 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 		GridDataFactory.defaultsFor(portText).hint(100, SWT.DEFAULT).grab(false, false).applyTo(portText);
 		actsAsServerButton = new Button(dgcomposite, SWT.CHECK);
 		actsAsServerButton.setText("Acts as server");
-		GridDataFactory.defaultsFor(portText).span(2, 1).applyTo(actsAsServerButton);
+		actsAsServerButton.addSelectionListener(new SelectionListener() {
+			private void handleChange() {
+				String keystorepath = getAuthKeyStorePathFromUI();
 
-		SakerBuildProjectPropertyPage.addLabelWithText(dgcomposite, "Authentication keystore: ");
+				clearAuthKeyStoreButton.setEnabled(keystorepath != null);
+				validateProperties();
+			}
+
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				handleChange();
+			}
+
+			@Override
+			public void widgetDefaultSelected(SelectionEvent e) {
+				handleChange();
+			}
+		});
+		SakerBuildProjectPropertyPage.addLabelWithText(dgcomposite,
+				"The default port is " + DaemonLaunchParameters.DEFAULT_PORT
+						+ ", leave as empty to run in private mode.\n" + "Set 0 to use an OS determined port.");
+
+		authKeyStoreLabel = SakerBuildProjectPropertyPage.addLabelWithText(dgcomposite, "Authentication keystore: ");
 
 		Composite keystorecomposite = new Composite(dgcomposite, SWT.NONE);
-		keystorecomposite.setLayout(new GridLayout(2, false));
+		keystorecomposite.setLayout(new GridLayout(3, false));
 		GridDataFactory.fillDefaults().grab(true, true).applyTo(keystorecomposite);
 
 		authKeyStorePathLabel = new Label(keystorecomposite, SWT.NONE);
 		authKeyStorePathLabel.setLayoutData(GridDataFactory.fillDefaults().hint(SWT.DEFAULT, SWT.DEFAULT)
 				.align(SWT.FILL, SWT.CENTER).grab(true, false).create());
 
-		Button modifyauthkeystorebutton = new Button(keystorecomposite, SWT.PUSH);
-		modifyauthkeystorebutton.setText("Modify...");
-		modifyauthkeystorebutton.addSelectionListener(SelectionListener.widgetSelectedAdapter(e -> {
-			//TODO
+		browseAuthKeyStoreButton = new Button(keystorecomposite, SWT.PUSH);
+		browseAuthKeyStoreButton.setText("Browse...");
+		browseAuthKeyStoreButton.addSelectionListener(SelectionListener.widgetSelectedAdapter(event -> {
+			Path selected = performKeyStoreSelection();
+			if (selected == null) {
+				return;
+			}
+			authKeyStorePathLabel.setText(selected.toString());
+			authKeyStorePathLabel.setEnabled(true);
+			clearAuthKeyStoreButton.setEnabled(true);
+			validateProperties();
+		}));
+
+		clearAuthKeyStoreButton = new Button(keystorecomposite, SWT.PUSH);
+		clearAuthKeyStoreButton.setText("Clear");
+		clearAuthKeyStoreButton.addSelectionListener(SelectionListener.widgetSelectedAdapter(event -> {
+			authKeyStorePathLabel.setText(AUTH_KEYSTORE_LABEL_TEXT_NONE);
+			clearAuthKeyStoreButton.setEnabled(false);
+			authKeyStorePathLabel.setEnabled(false);
+			validateProperties();
 		}));
 
 		populateControls();
@@ -156,28 +210,153 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 		return composite;
 	}
 
+	private Path performKeyStoreSelection() {
+		FileDialog dialog = new FileDialog(getShell(), SWT.OPEN);
+		dialog.setText("Open keystore");
+		dialog.setFilterExtensions(new String[] { "*.pfx;*.p12;*.jks", "*.*" });
+		String selected = dialog.open();
+		if (selected == null) {
+			return null;
+		}
+		System.out.println("SakerBuildEnvironmentPreferencePage.createContents() " + selected);
+		Path selectedpath;
+		try {
+			selectedpath = Paths.get(selected).toAbsolutePath().normalize();
+		} catch (Exception e) {
+			//if any parsing error happens
+			ErrorDialog.openError(getShell(), "Path selection failed", null, EclipseSakerIDEPlugin
+					.createDisplayExceptionStatus(SakerLog.SEVERITY_ERROR, "Failed to parse path: " + selected, e));
+			return null;
+		}
+
+		//we expect that the key password will be the same as the store password, as per the general recommendation
+		//that these two equal
+		String storepass = null;
+		try {
+			storepass = EclipseSakerIDEPlugin.getKeyStorePassword(selectedpath);
+		} catch (StorageException e) {
+			plugin.displayException(SakerLog.SEVERITY_WARNING,
+					"Failed to retrieve keystore password from secure storage for: " + selectedpath, e);
+		}
+		boolean first = true;
+		while (true) {
+			char[][] inoutkspass;
+			boolean wasfirst = first;
+			if (first) {
+				//always try to guess as the first attempt
+				inoutkspass = new char[][] { storepass == null ? null : storepass.toCharArray(), null };
+			} else {
+				inoutkspass = new char[][] { storepass == null ? null : storepass.toCharArray() };
+			}
+
+			first = false;
+
+			KeyStore keystore;
+			try {
+				keystore = LaunchConfigUtils.openKeystore(selectedpath, inoutkspass);
+			} catch (KeyStoreException e) {
+				String errortext;
+				if (storepass == null || wasfirst) {
+					errortext = null;
+				} else {
+					StringBuilder sb = new StringBuilder("Incorrect password, exception:\n");
+					SakerLog.printFormatException(ExceptionView.create(e), sb, CommonExceptionFormat.NO_TRACE);
+					errortext = sb.toString().replace("\r", ""); // avoid \r\n as that displays as double new line
+				}
+				KeyStorePasswordDialog ksdialog = new KeyStorePasswordDialog(getShell(), "Keystore password",
+						"Enter keystore password for: " + selectedpath, "Password:", errortext);
+				if (ksdialog.open() == IDialogConstants.OK_ID) {
+					storepass = ksdialog.getResult();
+					continue;
+				}
+				return null;
+			} catch (Exception e) {
+				ErrorDialog.openError(getShell(), "Keystore failure", null,
+						EclipseSakerIDEPlugin.createDisplayExceptionStatus(SakerLog.SEVERITY_ERROR,
+								"Failed to open keystore: " + selected, e));
+				return null;
+			}
+			KeyManagerFactory kmfactory;
+			try {
+				kmfactory = LaunchConfigUtils.openKeyManagerFactory(keystore, selectedpath, inoutkspass[0], null,
+						KeyStoreException::new);
+			} catch (Exception e) {
+				ErrorDialog.openError(getShell(), "Keystore failure", null,
+						EclipseSakerIDEPlugin.createDisplayExceptionStatus(SakerLog.SEVERITY_ERROR,
+								"Failed to create Key manager factory for keystore: " + selected, e));
+				return null;
+			}
+			try {
+				LaunchConfigUtils.createSSLContext(selectedpath, keystore, kmfactory,
+						EclipseSakerIDEPlugin::createExceptionForKeyStoreOpening);
+			} catch (Exception e) {
+				ErrorDialog.openError(getShell(), "SSL context failure", null,
+						EclipseSakerIDEPlugin.createDisplayExceptionStatus(SakerLog.SEVERITY_ERROR,
+								"Failed to create SSL context for keystore: " + selected, e));
+				return null;
+			}
+
+			if (storepass != null) {
+				try {
+					EclipseSakerIDEPlugin.writeKeyStorePassword(selectedpath, storepass);
+				} catch (StorageException | IOException e) {
+					ErrorDialog.openError(getShell(), "Secure storage failure", null,
+							EclipseSakerIDEPlugin.createDisplayExceptionStatus(SakerLog.SEVERITY_ERROR,
+									"Failed to store password for keystore: " + selected, e));
+					return null;
+				}
+			}
+			//return a normalized string representation
+			return selectedpath;
+		}
+	}
+
 	private void populateControls() {
 		portText.setText(ObjectUtils.nullDefault(properties.getPort(), ""));
-		actsAsServerButton
-				.setSelection(SakerIDESupportUtils.getBooleanValueOrDefault(properties.getActsAsServer(), false));
+		boolean actsasserver = SakerIDESupportUtils.getBooleanValueOrDefault(properties.getActsAsServer(), false);
+		actsAsServerButton.setSelection(actsasserver);
 
 		exceptionFormatSelector.reset(properties);
 
 		exceptionFormatCombo.setItems(exceptionFormatSelector.getLabels().toArray(ObjectUtils.EMPTY_STRING_ARRAY));
 		exceptionFormatCombo.select(exceptionFormatSelector.getSelectedIndex());
 
+		String authKeyStorePath = properties.getKeyStorePath();
 		if (authKeyStorePath == null) {
-			authKeyStorePathLabel.setText("(None)");
+			authKeyStorePathLabel.setText(AUTH_KEYSTORE_LABEL_TEXT_NONE);
+			authKeyStorePathLabel.setEnabled(false);
 		} else {
 			authKeyStorePathLabel.setText(authKeyStorePath);
+			authKeyStorePathLabel.setEnabled(true);
 		}
+
+		clearAuthKeyStoreButton.setEnabled(authKeyStorePath != null);
 	}
 
 	private void validateProperties() {
 		String portstr = portText.getText().trim();
-		if (!ObjectUtils.isNullOrEmpty(portstr)) {
+		boolean hasport = !ObjectUtils.isNullOrEmpty(portstr);
+		if (hasport) {
 			if (SakerIDESupportUtils.getPortValueOrNull(portstr) == null) {
 				invalidateWithErrorMessage("Port number not in range: " + portstr + " for 0 and " + 0xFFFF);
+				return;
+			}
+		}
+		boolean actsasserver = actsAsServerButton.getSelection();
+		if (actsasserver && !hasport) {
+			invalidateWithErrorMessage("Set a port number to to use as server.");
+			return;
+		}
+		String authkeystore = getAuthKeyStorePathFromUI();
+		if (!ObjectUtils.isNullOrEmpty(authkeystore)) {
+			try {
+				Path path = Paths.get(authkeystore).toAbsolutePath().normalize();
+
+				LaunchConfigUtils.createSSLContext(path,
+						ImmutableUtils.asUnmodifiableArrayList(null, EclipseSakerIDEPlugin.getKeyStorePassword(path)),
+						null, EclipseSakerIDEPlugin::createExceptionForKeyStoreOpening);
+			} catch (Exception e) {
+				invalidateWithErrorMessage("Failed to open keystore for daemon server: " + authkeystore);
 				return;
 			}
 		}
@@ -194,12 +373,23 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 		setErrorMessage(null);
 	}
 
+	private String getAuthKeyStorePathFromUI() {
+		String val = authKeyStorePathLabel.getText();
+		if (AUTH_KEYSTORE_LABEL_TEXT_NONE.equals(val)) {
+			//a boolean flag for this somewhere would be more clean, but we don't expect 
+			//the user to set a keystore with the path of (None)
+			//so this is fine
+			return null;
+		}
+		return val;
+	}
+
 	@Override
 	protected void performDefaults() {
 		super.performDefaults();
 
 		properties = SimpleIDEPluginProperties.builder(properties).setActsAsServer((String) null)
-				.setExceptionFormat((String) null).setPort((String) null).build();
+				.setExceptionFormat((String) null).setPort((String) null).setKeyStorePath(null).build();
 
 		populateControls();
 		validateProperties();
@@ -209,7 +399,8 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 	public boolean performOk() {
 		SimpleIDEPluginProperties.Builder builder = SimpleIDEPluginProperties.builder(plugin.getIDEPluginProperties())
 				.setPort(portText.getText().trim()).setActsAsServer(actsAsServerButton.getSelection())
-				.setExceptionFormat(exceptionFormatSelector.getSelectedFormat());
+				.setExceptionFormat(exceptionFormatSelector.getSelectedFormat())
+				.setKeyStorePath(getAuthKeyStorePathFromUI());
 		try {
 			plugin.setIDEPluginProperties(builder.build(), plugin.getEnvironmentParameterContributors());
 		} catch (IOException e) {
@@ -219,10 +410,32 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 		return true;
 	}
 
-	private class AuthKeyStoreDialog extends TitleAreaDialog {
+	private static class KeyStorePasswordDialog extends TitleAreaDialog {
+		private Text secretText;
+		private String title;
+		private String message;
+		private String prompt;
+		private String errorText;
 
-		public AuthKeyStoreDialog(Shell parentShell) {
-			super(parentShell);
+		private String result;
+
+		public KeyStorePasswordDialog(Shell activeShell, String titleinfo, String message, String prompt,
+				String errortext) {
+			super(activeShell);
+			this.title = titleinfo;
+			this.message = message;
+			this.prompt = prompt;
+			this.errorText = errortext;
+		}
+
+		@Override
+		protected void configureShell(Shell newShell) {
+			super.configureShell(newShell);
+			newShell.setText(title);
+		}
+
+		public String getResult() {
+			return result;
 		}
 
 		@Override
@@ -231,31 +444,45 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 		}
 
 		@Override
-		protected void configureShell(Shell newShell) {
-			super.configureShell(newShell);
-			newShell.setText("Daemon authentication keystore");
-		}
-
-		@Override
-		public void create() {
-			super.create();
-			setTitle("Daemon authentication keystore");
-			resetMessage();
-		}
-
-		private void resetMessage() {
-			setMessage("Specify the keystore to use for authentication with the build daemon.", IMessageProvider.NONE);
-		}
-
-		@Override
 		protected Control createDialogArea(Composite parent) {
-			Composite area = (Composite) super.createDialogArea(parent);
-			Composite container = new Composite(area, SWT.NONE);
-			container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-			GridLayout layout = new GridLayout(2, false);
-			container.setLayout(layout);
+			Composite result = (Composite) super.createDialogArea(parent);
+			if (title != null) {
+				setTitle(title);
+			}
+			if (message != null) {
+				setMessage(message, errorText == null ? IMessageProvider.INFORMATION : IMessageProvider.ERROR);
+			}
+			Composite composite = new Composite(result, SWT.NONE);
+			composite.setLayoutData(
+					GridDataFactory.fillDefaults().align(SWT.FILL, SWT.CENTER).grab(true, false).create());
+			GridLayout compositegridlayout = new GridLayout(prompt == null ? 1 : 2, false);
+			compositegridlayout.marginWidth = 20;
+			composite.setLayout(compositegridlayout);
+			if (prompt != null) {
+				Label promptlabel = new Label(composite, SWT.NONE);
+				promptlabel.setText(prompt);
+			}
+			secretText = new Text(composite, SWT.BORDER);
+			secretText.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).create());
+			secretText.setEchoChar('*');
+			secretText.setMessage("Keystore password");
 
-			return area;
+			Label infolabel = new Label(composite, SWT.NONE);
+			infolabel.setText("The password will be stored in the Secure Storage.");
+			GridDataFactory.fillDefaults().span(compositegridlayout.numColumns, 1).applyTo(infolabel);
+
+			if (errorText != null) {
+				Label errorlabel = new Label(composite, SWT.NONE);
+				errorlabel.setText(errorText);
+				GridDataFactory.fillDefaults().span(compositegridlayout.numColumns, 1).applyTo(errorlabel);
+			}
+			return result;
+		}
+
+		@Override
+		protected void okPressed() {
+			result = secretText.getText();
+			super.okPressed();
 		}
 	}
 

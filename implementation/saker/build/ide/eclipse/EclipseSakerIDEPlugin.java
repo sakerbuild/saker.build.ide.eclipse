@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -49,6 +50,9 @@ import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.equinox.security.storage.ISecurePreferences;
+import org.eclipse.equinox.security.storage.SecurePreferencesFactory;
+import org.eclipse.equinox.security.storage.StorageException;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.console.ConsolePlugin;
@@ -58,6 +62,7 @@ import org.eclipse.ui.console.IOConsole;
 
 import saker.build.daemon.DaemonLaunchParameters;
 import saker.build.file.path.SakerPath;
+import saker.build.file.provider.LocalFileProvider;
 import saker.build.ide.eclipse.api.ISakerPlugin;
 import saker.build.ide.eclipse.extension.params.IEnvironmentUserParameterContributor;
 import saker.build.ide.eclipse.extension.params.UserParameterModification;
@@ -68,6 +73,7 @@ import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SakerIDEPlugin.PluginResourceListener;
 import saker.build.ide.support.SakerIDEProject;
+import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.persist.StructuredArrayObjectInput;
 import saker.build.ide.support.persist.StructuredArrayObjectOutput;
@@ -76,6 +82,7 @@ import saker.build.ide.support.persist.StructuredObjectOutput;
 import saker.build.ide.support.persist.XMLStructuredReader;
 import saker.build.ide.support.persist.XMLStructuredWriter;
 import saker.build.ide.support.properties.IDEPluginProperties;
+import saker.build.launching.LaunchConfigUtils;
 import saker.build.runtime.environment.SakerEnvironmentImpl;
 import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
@@ -83,6 +90,9 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.io.IOUtils;
 
 public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplayer, ISakerPlugin {
+	private static final String KEYSTORE_PASSWORDS_SECURE_STORAGE_NODE_NAME = Activator.PLUGIN_ID
+			+ "/keystore-passwords";
+
 	private static final String NODE_ARRAY_EXTENSION_DISABLEMENTS = "extension_disablements";
 	private static final String CONFIG_FILE_ROOT_OBJECT_NAME = "saker.build.ide.eclipse.plugin.config";
 	private static final String IDE_PLUGIN_PROPERTIES_FILE_NAME = "." + CONFIG_FILE_ROOT_OBJECT_NAME;
@@ -159,11 +169,37 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 	public void start(IProgressMonitor progressmonitor) throws Exception {
 		IDEPluginProperties propertieswithcontributors = getIDEPluginPropertiesWithEnvironmentParameterContributions(
 				sakerPlugin.getIDEPluginProperties(), progressmonitor);
-		//TODO handle keystores if any
-		SSLContext sslcontext = null;
+		DaemonLaunchParameters daemonparams = sakerPlugin.createDaemonLaunchParameters(propertieswithcontributors);
+
+		String keystorepathprop = propertieswithcontributors.getKeyStorePath();
 		SakerPath keystorepath = null;
-		sakerPlugin.start(sakerPlugin.createDaemonLaunchParameters(propertieswithcontributors), sslcontext,
-				keystorepath);
+		if (!ObjectUtils.isNullOrEmpty(keystorepathprop)) {
+			try {
+				keystorepath = SakerPath.valueOf(keystorepathprop);
+			} catch (Exception e) {
+				displayException(SakerLog.SEVERITY_ERROR,
+						"Failed to parse daemon keystore property, starting daemon in local mode: " + keystorepathprop,
+						e);
+				daemonparams = SakerIDESupportUtils.cleanParametersForFailedSSL(daemonparams);
+			}
+		}
+		sakerPlugin.start(daemonparams, keystorepath, this::createSSLContext);
+	}
+
+	protected SSLContext createSSLContext(SakerPath keystore) throws KeyStoreException {
+		if (keystore == null) {
+			return null;
+		}
+		String storepassword = null;
+		Path realpath = LocalFileProvider.toRealPath(keystore);
+		try {
+			storepassword = getKeyStorePassword(realpath);
+		} catch (StorageException e) {
+			displayException(SakerLog.SEVERITY_ERROR,
+					"Failed to retrieve keystore password from Secure Storage: " + keystore, e);
+		}
+		return LaunchConfigUtils.createSSLContext(realpath, ImmutableUtils.asUnmodifiableArrayList(null, storepassword),
+				null, EclipseSakerIDEPlugin::createExceptionForKeyStoreOpening);
 	}
 
 	public void addPluginResourceListener(PluginResourceListener listener) {
@@ -180,14 +216,7 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 
 	@Override
 	public void invalidateEnvironmentUserParameterContributions() {
-		new Job("Updating environment parameters") {
-			@Override
-			protected IStatus run(IProgressMonitor monitor) {
-				sakerPlugin.updateForPluginProperties(
-						getIDEPluginPropertiesWithEnvironmentParameterContributions(getIDEPluginProperties(), monitor));
-				return Status.OK_STATUS;
-			}
-		}.schedule();
+		startUpdateEnvironmentParametersJob();
 	}
 
 	public final SakerEnvironmentImpl getPluginEnvironment() throws IOException {
@@ -201,14 +230,16 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 	public final void setIDEPluginProperties(IDEPluginProperties properties,
 			List<? extends ContributedExtensionConfiguration<IEnvironmentUserParameterContributor>> environmentParameterContributors)
 			throws IOException {
+		boolean propertieschanged;
 		synchronized (configurationChangeLock) {
-			sakerPlugin.setIDEPluginProperties(properties);
+			propertieschanged = sakerPlugin.setIDEPluginProperties(properties);
 			Set<ExtensionDisablement> prevdisablements = getExtensionDisablements(
 					this.environmentParameterContributors);
 			this.environmentParameterContributors = ImmutableUtils.makeImmutableList(environmentParameterContributors);
 			Set<ExtensionDisablement> currentdisablements = getExtensionDisablements(
 					this.environmentParameterContributors);
 			if (!prevdisablements.equals(currentdisablements)) {
+				propertieschanged = true;
 				try {
 					writePluginConfigurationFile(currentdisablements);
 				} catch (IOException e) {
@@ -218,12 +249,22 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 			}
 		}
 
+		if (propertieschanged) {
+			startUpdateEnvironmentParametersJob();
+		}
+	}
+
+	private void startUpdateEnvironmentParametersJob() {
 		new Job("Updating environment parameters") {
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
 				IDEPluginProperties pluginproperties = getIDEPluginPropertiesWithEnvironmentParameterContributions(
 						sakerPlugin.getIDEPluginProperties(), monitor);
-				sakerPlugin.updateForPluginProperties(pluginproperties);
+				if (monitor.isCanceled()) {
+					return Status.CANCEL_STATUS;
+				}
+
+				sakerPlugin.updateForPluginProperties(pluginproperties, EclipseSakerIDEPlugin.this::createSSLContext);
 				return Status.OK_STATUS;
 			}
 		}.schedule();
@@ -235,13 +276,28 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 			protected IStatus run(IProgressMonitor monitor) {
 				try {
 					synchronized (configurationChangeLock) {
-						DaemonLaunchParameters launchparams = sakerPlugin.createDaemonLaunchParameters(
-								getIDEPluginPropertiesWithEnvironmentParameterContributions(
-										sakerPlugin.getIDEPluginProperties(), monitor));
+						IDEPluginProperties properties = getIDEPluginPropertiesWithEnvironmentParameterContributions(
+								sakerPlugin.getIDEPluginProperties(), monitor);
+						DaemonLaunchParameters launchparams = sakerPlugin.createDaemonLaunchParameters(properties);
 						if (monitor.isCanceled()) {
 							return Status.CANCEL_STATUS;
 						}
-						sakerPlugin.forceReloadPluginDaemon(launchparams);
+
+						String keystorepathprop = properties.getKeyStorePath();
+						SakerPath keystorepath = null;
+						if (!ObjectUtils.isNullOrEmpty(keystorepathprop)) {
+							try {
+								keystorepath = SakerPath.valueOf(keystorepathprop);
+							} catch (Exception e) {
+								displayException(SakerLog.SEVERITY_ERROR,
+										"Failed to open keystore, starting daemon in local mode: " + keystorepathprop,
+										e);
+								launchparams = SakerIDESupportUtils.cleanParametersForFailedSSL(launchparams);
+							}
+						}
+
+						sakerPlugin.forceReloadPluginDaemon(launchparams, keystorepath,
+								EclipseSakerIDEPlugin.this::createSSLContext);
 					}
 				} catch (OperationCanceledException e) {
 					return Status.CANCEL_STATUS;
@@ -654,6 +710,26 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 		return result;
 	}
 
+	public static void writeKeyStorePassword(Path keystorepath, String storepass) throws StorageException, IOException {
+		ISecurePreferences securestoreroot = SecurePreferencesFactory.getDefault();
+		ISecurePreferences keystorepasswordsnode = securestoreroot.node(KEYSTORE_PASSWORDS_SECURE_STORAGE_NODE_NAME);
+		String securestoragekey = keystorepath.toString();
+
+		if (storepass == null) {
+			keystorepasswordsnode.remove(securestoragekey);
+		} else {
+			keystorepasswordsnode.put(securestoragekey, storepass, true);
+		}
+		keystorepasswordsnode.flush();
+	}
+
+	public static String getKeyStorePassword(Path keystorepath) throws StorageException {
+		ISecurePreferences securestoreroot = SecurePreferencesFactory.getDefault();
+		ISecurePreferences keystorepasswordsnode = securestoreroot.node(KEYSTORE_PASSWORDS_SECURE_STORAGE_NODE_NAME);
+		String securestoragekey = keystorepath.toString();
+		return keystorepasswordsnode.get(securestoragekey, null);
+	}
+
 	private void writePluginConfigurationFile(Iterable<? extends ExtensionDisablement> disablements)
 			throws IOException {
 		Path propfilepath = pluginConfigurationFilePath;
@@ -724,6 +800,13 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 			}
 		}
 		return console;
+	}
+
+	public static KeyStoreException createExceptionForKeyStoreOpening(String msg, Throwable exc) {
+		if (exc == null) {
+			return new KeyStoreException(msg);
+		}
+		return new KeyStoreException(msg, exc);
 	}
 
 }
