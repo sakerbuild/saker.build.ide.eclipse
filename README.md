@@ -20,7 +20,14 @@ See the [installation guide](https://saker.build/saker.build/doc/eclipseplugin.h
 
 ## Build instructions
 
-The project can be built by importing it into Eclipse.
+The following JARs of the latest release are needed for building the project:
+
+* saker.build.jar
+* saker.build-ide.jar
+
+They can be downloaded from the [official repository](https://nest.saker.build/package/saker.build), then be placed in the working directory and renamed as seen above.
+
+The project then can be built by importing it into Eclipse. (Or see the command line instructions in the CI build description files.)
 
 ## License
 

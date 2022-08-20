@@ -2,3 +2,5 @@
 /impl/
 /build/
 /eclipse/
+saker.build.jar
+saker.build-ide.jar

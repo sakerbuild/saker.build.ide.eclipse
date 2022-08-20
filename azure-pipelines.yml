@@ -29,7 +29,27 @@ steps:
       exit 1
     fi
   condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
-  displayName: 'Check version number - tag consistency '
+  displayName: 'Check version number - tag consistency'
+  
+- task: DownloadBuildArtifacts@0
+  buildType: 'specific'
+  project: 'saker.build'
+  pipeline: 'sakerbuild.saker.build'
+  buildVersionToDownload: 'latest'
+  branchName: 'refs/heads/master'
+  downloadType: 'single'
+  artifactName: 'export_jars_8'
+  downloadPath: '.'
+  condition: not(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
+  displayName: 'Download latest saker.build JARs from master branch pipeline'
+- script: |
+    set -e
+    TAGVER=$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/')
+    curl -L "https://api.nest.saker.build/bundle/download/saker.build-v$TAGVER" -o saker.build.jar
+    curl -L "https://api.nest.saker.build/bundle/download/saker.build-ide-v$TAGVER" -o saker.build-ide.jar
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
+  displayName: 'Download released saker.build JARs'
+
 - script: |
     set -e
     curl https://archive.eclipse.org/technology/epp/downloads/release/2020-03/R/eclipse-rcp-2020-03-R-linux-gtk-x86_64.tar.gz -o eclipse.tar.gz
