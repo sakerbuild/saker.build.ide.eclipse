@@ -1,6 +1,6 @@
 # saker.build.ide.eclipse
 
-![Build status](https://img.shields.io/azure-devops/build/sakerbuild/53444128-aeb0-4d50-8b42-1ff5c679b47e/22/master)
+[![Build status](https://img.shields.io/azure-devops/build/sakerbuild/53444128-aeb0-4d50-8b42-1ff5c679b47e/22/master)](https://dev.azure.com/sakerbuild/saker.build.ide.eclipse/_build)
 
 The Eclipse IDE plugin for the [saker.build system](https://saker.build). The plugin embeds the saker.build runtime and provides support for invoking it from the IDE.
 
