@@ -52,9 +52,9 @@ steps:
 
 - script: |
     set -e
-    TAGVER=$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/')
-    curl -L "https://api.nest.saker.build/bundle/download/saker.build-v$TAGVER" -o saker.build.jar
-    curl -L "https://api.nest.saker.build/bundle/download/saker.build-ide-v$TAGVER" -o saker.build-ide.jar
+    JARVERSIONS=$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/' | cut -d . -f 1,2,3)
+    curl -L "https://api.nest.saker.build/bundle/download/saker.build-v$JARVERSIONS" -o saker.build.jar
+    curl -L "https://api.nest.saker.build/bundle/download/saker.build-ide-v$JARVERSIONS" -o saker.build-ide.jar
   condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
   displayName: 'Download released saker.build JARs'
 
