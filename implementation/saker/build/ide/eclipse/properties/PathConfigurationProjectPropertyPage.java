@@ -54,6 +54,7 @@ import org.eclipse.ui.dialogs.PropertyPage;
 import saker.build.file.path.SakerPath;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
+import saker.build.ide.eclipse.PluginUtils;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
@@ -148,8 +149,7 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 		}
 
 		Composite composite = new Composite(parent, SWT.NONE);
-		GridLayout layout = new GridLayout();
-		composite.setLayout(layout);
+		composite.setLayout(new GridLayout());
 		GridData data = new GridData();
 		data.grabExcessHorizontalSpace = true;
 		data.grabExcessVerticalSpace = true;
@@ -266,8 +266,7 @@ public class PathConfigurationProjectPropertyPage extends PropertyPage {
 	}
 
 	private static void createLabelWithText(Composite workingrow, String labeltext) {
-		Label wdlabel = new Label(workingrow, SWT.NONE);
-		wdlabel.setText(labeltext);
+		PluginUtils.createLabelWithText(workingrow, labeltext);
 	}
 
 	public static DaemonConnectionIDEProperty getConnectionPropertyWithName(

@@ -18,8 +18,10 @@ package saker.build.ide.eclipse.properties;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
@@ -65,14 +67,15 @@ import saker.build.ide.eclipse.ContributedExtensionConfiguration;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.thirdparty.saker.util.StringUtils;
 
 public class StringMapTableHandler {
-	private static final IContentProposal[] EMPTY_ICONTENTPROPOSALS_ARRAY = new IContentProposal[0];
+	public static final IContentProposal[] EMPTY_ICONTENTPROPOSALS_ARRAY = new IContentProposal[0];
 
 	//ctrl+space on windows, ctrl+space on mac
 	//    (command+space opens up the spotlight on mac)
 	//see SWTKeyLookup
-	private static final KeyStroke KEY_STROKE_CODE_COMPLETION;
+	public static final KeyStroke KEY_STROKE_CODE_COMPLETION;
 	static {
 		KeyStroke keystroke = null;
 		try {
@@ -87,27 +90,91 @@ public class StringMapTableHandler {
 	public static final String E_DUPLICATE_KEY = "duplicate-key";
 
 	private Table table;
-	private Set<Entry<String, String>> options = new LinkedHashSet<>();
+	private Set<Entry<String, String>> entries = new LinkedHashSet<>();
 	private List<ExtensionProvidedEntry> extensionEntries = Collections.emptyList();
 
 	private String keyValDialogTitle = "";
 	private String addButtonLabel = "";
 	private String keyValDialogBaseMessage = "";
 
+	private String keyColumnTitle = "Key";
+	private String valueColumnTitle = "Value";
+
 	private List<Listener> modifyListeners = new ArrayList<>();
 
-	private Supplier<String[]> keyProposalSuppliers;
-	private Function<String, String[]> valueProposalSuppliers;
+	private IContentProposalProvider keyContentProposalProvider;
+	private Function<String, IContentProposalProvider> valueContentProposalSupplier;
 
 	public StringMapTableHandler() {
 	}
 
-	public void setKeyProposalSuppliers(Supplier<String[]> keyProposalSuppliers) {
-		this.keyProposalSuppliers = keyProposalSuppliers;
+	/**
+	 * Overrides {@link #setKeyContentProposalProvider(IContentProposalProvider)}.
+	 */
+	public void setKeyProposalSupplier(Supplier<String[]> keyProposalSupplier) {
+		if (keyProposalSupplier != null) {
+			this.keyContentProposalProvider = new IContentProposalProvider() {
+				@Override
+				public IContentProposal[] getProposals(String contents, int position) {
+					String[] proposals = keyProposalSupplier.get();
+					if (ObjectUtils.isNullOrEmpty(proposals)) {
+						return EMPTY_ICONTENTPROPOSALS_ARRAY;
+					}
+					String prefix = contents.substring(0, position);
+
+					ArrayList<ContentProposal> list = new ArrayList<>();
+					for (String proposal : proposals) {
+						if (StringUtils.startsWithIgnoreCase(proposal, prefix)) {
+							list.add(new ContentProposal(proposal));
+						}
+					}
+					return list.toArray(new IContentProposal[list.size()]);
+				}
+			};
+		} else {
+			this.keyContentProposalProvider = null;
+		}
 	}
 
-	public void setValueProposalSuppliers(Function<String, String[]> valueProposalSuppliers) {
-		this.valueProposalSuppliers = valueProposalSuppliers;
+	public void setKeyContentProposalProvider(IContentProposalProvider keyContentProposalProvider) {
+		this.keyContentProposalProvider = keyContentProposalProvider;
+	}
+
+	public void setValueContentProposalArraySupplier(Function<String, String[]> valueProposalSupplier) {
+		if (valueProposalSupplier != null) {
+			this.valueContentProposalSupplier = keyname -> {
+				String[] proposals = valueProposalSupplier.apply(keyname);
+				if (ObjectUtils.isNullOrEmpty(proposals)) {
+					return null;
+				}
+				return new IContentProposalProvider() {
+					@Override
+					public IContentProposal[] getProposals(String contents, int position) {
+						String prefix = contents.substring(0, position);
+						ArrayList<ContentProposal> list = new ArrayList<>();
+						for (String proposal : proposals) {
+							if (StringUtils.startsWithIgnoreCase(proposal, prefix)) {
+								list.add(new ContentProposal(proposal));
+							}
+						}
+						return list.toArray(new IContentProposal[list.size()]);
+					}
+				};
+
+			};
+		} else {
+			this.valueContentProposalSupplier = null;
+		}
+	}
+
+	/**
+	 * Overrides {@link #setValueContentProposalArraySupplier(Function)}.
+	 * <p>
+	 * Argument for the function is the key value.
+	 */
+	public void setValueContentProposalSupplier(
+			Function<String, IContentProposalProvider> valueContentProposalSupplier) {
+		this.valueContentProposalSupplier = valueContentProposalSupplier;
 	}
 
 	public void setKeyValDialogTitle(String keyValDialogTitle) {
@@ -118,19 +185,43 @@ public class StringMapTableHandler {
 		this.keyValDialogBaseMessage = keyValDialogBaseMessage;
 	}
 
+	public void setKeyColumnTitle(String keyColumnTitle) {
+		this.keyColumnTitle = keyColumnTitle;
+	}
+
+	public void setValueColumnTitle(String valueColumnTitle) {
+		this.valueColumnTitle = valueColumnTitle;
+	}
+
 	public void setAddButtonLabel(String addButtonLabel) {
 		this.addButtonLabel = addButtonLabel;
 	}
 
-	public void setOptions(Set<? extends Entry<String, String>> options) {
-		this.options.clear();
+	protected IContentProposalProvider getKeyContentProposalProvider() {
+		return keyContentProposalProvider;
+	}
+
+	protected Function<String, IContentProposalProvider> getValueContentProposalSupplier() {
+		return valueContentProposalSupplier;
+	}
+
+	public final void setEntries(Map<String, String> options) {
+		if (options == null) {
+			this.setEntries(Collections.emptySet());
+		} else {
+			this.setEntries(options.entrySet());
+		}
+	}
+
+	public void setEntries(Set<? extends Entry<String, String>> options) {
+		this.entries.clear();
 		if (!ObjectUtils.isNullOrEmpty(options)) {
 			for (Entry<String, String> entry : options) {
-				this.options.add(ImmutableUtils.makeImmutableMapEntry(entry.getKey(), entry.getValue()));
+				this.entries.add(ImmutableUtils.makeImmutableMapEntry(entry.getKey(), entry.getValue()));
 			}
 		}
 		if (table != null) {
-			populateOptionsTable();
+			populateTableColumns();
 			table.getParent().requestLayout();
 		}
 	}
@@ -141,7 +232,7 @@ public class StringMapTableHandler {
 		}
 		this.extensionEntries = ImmutableUtils.makeImmutableList(extensionEntries);
 		if (table != null) {
-			populateOptionsTable();
+			populateTableColumns();
 			table.getParent().requestLayout();
 		}
 	}
@@ -159,7 +250,7 @@ public class StringMapTableHandler {
 
 	public PropertiesValidationErrorResult validate() {
 		Set<String> keys = new TreeSet<>();
-		for (Entry<String, String> entry : options) {
+		for (Entry<String, String> entry : entries) {
 			String key = entry.getKey();
 			if (ObjectUtils.isNullOrEmpty(key)) {
 				return new PropertiesValidationErrorResult(E_EMPTY_KEY, key);
@@ -179,8 +270,8 @@ public class StringMapTableHandler {
 		table = new Table(composite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION | SWT.BORDER);
 		TableColumn keycol = new TableColumn(table, SWT.NONE);
 		TableColumn valcol = new TableColumn(table, SWT.NONE);
-		keycol.setText("Key");
-		valcol.setText("Value");
+		keycol.setText(keyColumnTitle);
+		valcol.setText(valueColumnTitle);
 		keycol.setResizable(false);
 		valcol.setResizable(false);
 
@@ -203,9 +294,9 @@ public class StringMapTableHandler {
 						return;
 					}
 					for (TableItem selti : sel) {
-						options.remove(selti.getData());
+						entries.remove(selti.getData());
 					}
-					populateOptionsTable();
+					populateTableColumns();
 					callModifyListeners();
 				}
 			}
@@ -227,14 +318,14 @@ public class StringMapTableHandler {
 				Entry<String, String> itementry = (Entry<String, String>) data;
 				String key = itementry.getKey();
 				String value = itementry.getValue();
-				KeyValueDialog dialog = createOptionsDialog(table.getShell(), key, value);
+				KeyValueDialog dialog = createEntryDialog(table.getShell(), key, value);
 				dialog.setModifying(true);
 				dialog.create();
 				if (dialog.open() == Window.OK) {
-					options.remove(itementry);
-					options.add(ImmutableUtils.makeImmutableMapEntry(dialog.getParameterName(),
+					entries.remove(itementry);
+					entries.add(ImmutableUtils.makeImmutableMapEntry(dialog.getParameterName(),
 							dialog.getParameterValue()));
-					populateOptionsTable();
+					populateTableColumns();
 					callModifyListeners();
 				}
 			}
@@ -242,25 +333,33 @@ public class StringMapTableHandler {
 		Button addbutton = new Button(composite, SWT.PUSH);
 		addbutton.setText(addButtonLabel);
 		addbutton.addSelectionListener(SelectionListener.widgetSelectedAdapter(e -> {
-			KeyValueDialog dialog = createOptionsDialog(table.getShell(), "", "");
+			KeyValueDialog dialog = createEntryDialog(table.getShell(), "", "");
 			dialog.create();
 			if (dialog.open() == Window.OK) {
 				String paramname = dialog.getParameterName();
-				options.add(ImmutableUtils.makeImmutableMapEntry	(paramname, dialog.getParameterValue()));
-				populateOptionsTable();
+				entries.add(ImmutableUtils.makeImmutableMapEntry(paramname, dialog.getParameterValue()));
+				populateTableColumns();
 				callModifyListeners();
 			}
 		}));
 
-		populateOptionsTable();
+		populateTableColumns();
 	}
 
 	public Table getTable() {
 		return table;
 	}
 
-	public Set<? extends Entry<String, String>> getOptions() {
-		return options;
+	public Set<? extends Entry<String, String>> getEntries() {
+		return entries;
+	}
+
+	public Map<String, String> getEntriesMap() {
+		LinkedHashMap<String, String> result = new LinkedHashMap<>();
+		for (Entry<String, String> entry : entries) {
+			result.putIfAbsent(entry.getKey(), entry.getValue());
+		}
+		return result;
 	}
 
 	public static class ExtensionProvidedEntry {
@@ -294,21 +393,21 @@ public class StringMapTableHandler {
 		}
 	}
 
-	private KeyValueDialog createOptionsDialog(Shell shell, String key, String value) {
+	private KeyValueDialog createEntryDialog(Shell shell, String key, String value) {
 		KeyValueDialog result = new KeyValueDialog(shell, key, value);
 		result.setDialogTitle(keyValDialogTitle);
 		result.setBaseMessage(keyValDialogBaseMessage);
 		return result;
 	}
 
-	private void populateOptionsTable() {
+	private void populateTableColumns() {
 		Table table = this.table;
-		if (ObjectUtils.isNullOrEmpty(options) && ObjectUtils.isNullOrEmpty(extensionEntries)) {
+		if (ObjectUtils.isNullOrEmpty(entries) && ObjectUtils.isNullOrEmpty(extensionEntries)) {
 			table.setItemCount(0);
 		} else {
-			table.setItemCount(options.size() + extensionEntries.size());
+			table.setItemCount(entries.size() + extensionEntries.size());
 			int i = 0;
-			for (Entry<String, String> entry : options) {
+			for (Entry<String, String> entry : entries) {
 				TableItem item = table.getItem(i++);
 				item.setText(0, ObjectUtils.nullDefault(entry.getKey(), ""));
 				item.setText(1, ObjectUtils.nullDefault(entry.getValue(), ""));
@@ -340,11 +439,16 @@ public class StringMapTableHandler {
 		private String baseMessage;
 		private String dialogTitle;
 
+		private IContentProposalProvider keyContentProposalProvider;
+		private Function<String, IContentProposalProvider> valueContentProposalSupplier;
+
 		public KeyValueDialog(Shell parentShell, String paramName, String paramValue) {
 			super(parentShell);
 			this.paramName = paramName;
 			this.paramValue = paramValue;
 			this.initialParamName = paramName;
+			this.keyContentProposalProvider = getKeyContentProposalProvider();
+			this.valueContentProposalSupplier = getValueContentProposalSupplier();
 		}
 
 		public void setDialogTitle(String dialogTitle) {
@@ -386,17 +490,16 @@ public class StringMapTableHandler {
 			Composite area = (Composite) super.createDialogArea(parent);
 			Composite container = new Composite(area, SWT.NONE);
 			container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-			GridLayout layout = new GridLayout(2, false);
-			container.setLayout(layout);
+			container.setLayout(new GridLayout(2, false));
 
 			createParamName(container);
 			createParamValue(container);
 
 			if (KEY_STROKE_CODE_COMPLETION != null
-					&& (keyProposalSuppliers != null || valueProposalSuppliers != null)) {
-				Label lbtFirstName = new Label(container, SWT.NONE);
-				lbtFirstName.setText("Content assist is available. (" + KEY_STROKE_CODE_COMPLETION.format() + ")");
-				lbtFirstName.setLayoutData(GridDataFactory.swtDefaults().span(2, 1).create());
+					&& (keyContentProposalProvider != null || valueContentProposalSupplier != null)) {
+				Label assistInfoLabel = new Label(container, SWT.NONE);
+				assistInfoLabel.setText("Content assist is available. (" + KEY_STROKE_CODE_COMPLETION.format() + ")");
+				assistInfoLabel.setLayoutData(GridDataFactory.swtDefaults().span(2, 1).create());
 			}
 
 			Listener modifylistener = event -> {
@@ -458,32 +561,16 @@ public class StringMapTableHandler {
 			paramNameText.setText(ObjectUtils.nullDefault(paramName, ""));
 			paramNameText.setMessage("Name");
 
-			if (KEY_STROKE_CODE_COMPLETION != null && keyProposalSuppliers != null) {
+			if (KEY_STROKE_CODE_COMPLETION != null && keyContentProposalProvider != null) {
 				ContentProposalAdapter adapter = new ContentProposalAdapter(paramNameText, new TextContentAdapter(),
-						new IContentProposalProvider() {
-							@Override
-							public IContentProposal[] getProposals(String contents, int position) {
-								String[] proposals = keyProposalSuppliers.get();
-								if (ObjectUtils.isNullOrEmpty(proposals)) {
-									return EMPTY_ICONTENTPROPOSALS_ARRAY;
-								}
-								ArrayList<ContentProposal> list = new ArrayList<>();
-								for (String proposal : proposals) {
-									if (proposal.length() >= contents.length()
-											&& proposal.substring(0, contents.length()).equalsIgnoreCase(contents)) {
-										list.add(new ContentProposal(proposal));
-									}
-								}
-								return list.toArray(new IContentProposal[list.size()]);
-							}
-						}, KEY_STROKE_CODE_COMPLETION, null);
+						keyContentProposalProvider, KEY_STROKE_CODE_COMPLETION, null);
 				adapter.setProposalAcceptanceStyle(ContentProposalAdapter.PROPOSAL_REPLACE);
 			}
 		}
 
 		private boolean isParameterAlreadyPresent() {
 			String key = paramNameText.getText();
-			for (Entry<String, String> entry : options) {
+			for (Entry<String, String> entry : entries) {
 				if (key.equals(entry.getKey())) {
 					return true;
 				}
@@ -503,23 +590,17 @@ public class StringMapTableHandler {
 			paramValueText.setText(ObjectUtils.nullDefault(paramValue, ""));
 			paramValueText.setMessage("Value");
 
-			if (KEY_STROKE_CODE_COMPLETION != null && valueProposalSuppliers != null) {
+			if (KEY_STROKE_CODE_COMPLETION != null && valueContentProposalSupplier != null) {
 				ContentProposalAdapter adapter = new ContentProposalAdapter(paramValueText, new TextContentAdapter(),
 						new IContentProposalProvider() {
 							@Override
 							public IContentProposal[] getProposals(String contents, int position) {
-								String[] proposals = valueProposalSuppliers.apply(paramNameText.getText());
-								if (ObjectUtils.isNullOrEmpty(proposals)) {
+								IContentProposalProvider provider = valueContentProposalSupplier
+										.apply(paramNameText.getText());
+								if (provider == null) {
 									return EMPTY_ICONTENTPROPOSALS_ARRAY;
 								}
-								ArrayList<ContentProposal> list = new ArrayList<>();
-								for (String proposal : proposals) {
-									if (proposal.length() >= contents.length()
-											&& proposal.substring(0, contents.length()).equalsIgnoreCase(contents)) {
-										list.add(new ContentProposal(proposal));
-									}
-								}
-								return list.toArray(new IContentProposal[list.size()]);
+								return provider.getProposals(contents, position);
 							}
 						}, KEY_STROKE_CODE_COMPLETION, null);
 				adapter.setProposalAcceptanceStyle(ContentProposalAdapter.PROPOSAL_REPLACE);

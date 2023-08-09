@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -44,7 +45,6 @@ import java.util.UUID;
 import java.util.WeakHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BiConsumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -54,6 +54,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionRegistry;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
@@ -130,6 +131,7 @@ import saker.build.ide.support.persist.XMLStructuredReader;
 import saker.build.ide.support.persist.XMLStructuredWriter;
 import saker.build.ide.support.properties.IDEPluginProperties;
 import saker.build.ide.support.properties.IDEProjectProperties;
+import saker.build.ide.support.properties.ParameterizedBuildTargetIDEProperty;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.PropertiesValidationException;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
@@ -146,12 +148,14 @@ import saker.build.runtime.execution.SecretInputReader;
 import saker.build.runtime.params.ExecutionPathConfiguration;
 import saker.build.scripting.ScriptParsingFailedException;
 import saker.build.scripting.model.ScriptModellingEnvironment;
+import saker.build.scripting.model.info.BuildTargetInformation;
 import saker.build.task.TaskProgressMonitor;
 import saker.build.task.TaskResultCollection;
 import saker.build.task.utils.TaskUtils;
 import saker.build.thirdparty.saker.util.DateUtils;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.thirdparty.saker.util.function.TriConsumer;
 import saker.build.thirdparty.saker.util.io.ByteSink;
 import saker.build.thirdparty.saker.util.io.ByteSource;
 import saker.build.thirdparty.saker.util.io.IOUtils;
@@ -170,10 +174,21 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		}
 	}
 
+	/**
+	 * Qualified name of the an absolute execution path a build script of the last invoked build target.
+	 */
 	private static final QualifiedName LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME = new QualifiedName(Activator.PLUGIN_ID,
 			"last-build-script-path");
+	/**
+	 * Qualified name for the last invoked build target.
+	 */
 	private static final QualifiedName LAST_BUILD_TARGET_NAME_QUALIFIED_NAME = new QualifiedName(Activator.PLUGIN_ID,
 			"last-build-target-name");
+	/**
+	 * Qualified name of the unique id of the parameterized build target that was invoked in the last build.
+	 */
+	private static final QualifiedName LAST_PARAMETERIZED_BUILD_TARGET_UUID_QUALIFIED_NAME = new QualifiedName(
+			Activator.PLUGIN_ID, "last-param-build-target-uuid");
 
 	private static final String CONSOLE_NAME = "Saker.build Console";
 
@@ -314,11 +329,87 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				SakerPath.valueOf(getProjectPath()), path);
 	}
 
+	public SakerPath getParameterizedBuildTargetScriptExecutionPath(ParameterizedBuildTargetIDEProperty prop) {
+		if (prop == null) {
+			return null;
+		}
+		SakerPath parsedpath = SakerIDESupportUtils.tryParsePath(prop.getScriptPath());
+		if (parsedpath == null) {
+			return null;
+		}
+		if (parsedpath.isAbsolute()) {
+			return parsedpath;
+		}
+		return projectPathToExecutionPath(parsedpath);
+	}
+
 	public boolean isScriptModellingConfigurationAppliesTo(IFile file) {
 		SakerPath projectrelativepath = SakerPath.valueOf(file.getProjectRelativePath().toString());
 		SakerPath execpath = projectPathToExecutionPath(projectrelativepath);
 
 		return isScriptModellingConfigurationAppliesTo(execpath);
+	}
+
+	public void handleFileMove(IFile file, IPath movedto) {
+		//move the parameterized targets with the file
+		SakerPath oldrelativepath = SakerPath.valueOf(file.getProjectRelativePath().toString());
+		SakerPath oldexecpath = projectPathToExecutionPath(oldrelativepath);
+
+		IPath projectpath = file.getProject().getFullPath();
+		if (!projectpath.isPrefixOf(movedto)) {
+			//moved to a different project
+			return;
+		}
+		SakerPath newrelativepath = SakerPath.valueOf(movedto.makeRelativeTo(projectpath).toString());
+		SakerPath newexecpath = projectPathToExecutionPath(newrelativepath);
+
+		if (oldexecpath != null && newexecpath != null) {
+			//update the last build script property to the new path
+			try {
+				String lastscriptpath = ideProject.getPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME);
+				if (lastscriptpath != null && oldexecpath.equals(SakerIDESupportUtils.tryParsePath(lastscriptpath))) {
+					ideProject.setPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME,
+							Objects.toString(newexecpath, null));
+				}
+			} catch (CoreException e) {
+				displayException(SakerLog.SEVERITY_ERROR, "Failed to update last build script path propery.", e);
+			}
+		}
+
+		//perform the moving
+		IDEProjectProperties properties = getIDEProjectProperties();
+		if (properties == null) {
+			return;
+		}
+		Set<? extends ParameterizedBuildTargetIDEProperty> paramtargets = properties.getParameterizedBuildTargets();
+		if (ObjectUtils.isNullOrEmpty(paramtargets)) {
+			return;
+		}
+		boolean changed = false;
+		Set<ParameterizedBuildTargetIDEProperty> ntargets = new LinkedHashSet<>();
+		for (ParameterizedBuildTargetIDEProperty paramtarget : paramtargets) {
+			SakerPath parsedpath = SakerIDESupportUtils.tryParsePath(paramtarget.getScriptPath());
+			if (oldrelativepath.equals(parsedpath) || (oldexecpath != null && oldexecpath.equals(parsedpath))) {
+				//change the path of this property, and add that one
+				ntargets.add(new ParameterizedBuildTargetIDEProperty(paramtarget.getUuid(), newrelativepath.toString(),
+						paramtarget.getTargetName(), paramtarget.getDisplayName(),
+						paramtarget.getBuildTargetParameters()));
+				changed = true;
+				continue;
+			}
+			ntargets.add(paramtarget);
+			continue;
+		}
+
+		if (changed) {
+			try {
+				setIDEProjectProperties(
+						SimpleIDEProjectProperties.builder(properties).setParameterizedBuildTargets(ntargets).build());
+			} catch (IOException e) {
+				displayException(SakerLog.SEVERITY_ERROR, "Failed to save project properties.", e);
+			}
+		}
+
 	}
 
 	private boolean isScriptModellingConfigurationAppliesTo(SakerPath execpath) {
@@ -588,18 +679,23 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		return sakerProject.getTrackedScriptPaths();
 	}
 
+	@Deprecated
 	public final Set<String> getScriptTargets(SakerPath scriptpath) throws ScriptParsingFailedException, IOException {
 		return sakerProject.getScriptTargets(scriptpath);
 	}
 
-	public SakerPath getWorkingDirectoryExecutionPath() {
+	public final Collection<? extends BuildTargetInformation> getScriptBuildTargetInfos(SakerPath scriptpath)
+			throws ScriptParsingFailedException, IOException {
+		return sakerProject.getScriptBuildTargetInfos(scriptpath);
+	}
+
+	public SakerPath getProjectDirectoryExecutionPath() {
 		return projectPathToExecutionPath(SakerPath.EMPTY);
 	}
 
 	public void clean(IProgressMonitor monitor) {
 		try {
-			ideProject.setPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME, null);
-			ideProject.setPersistentProperty(LAST_BUILD_TARGET_NAME_QUALIFIED_NAME, null);
+			clearLastBuildTarget();
 		} catch (Exception e) {
 			displayException(SakerLog.SEVERITY_ERROR,
 					"Failed to save last build information properties for project: " + ideProject.getName(), e);
@@ -623,19 +719,33 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 	}
 
 	public void build(IProgressMonitor monitor) {
-		withLatestOrChosenBuildTarget((scriptpath, target) -> {
-			build(scriptpath, target, monitor);
+		withLatestOrChosenBuildTarget((scriptpath, target, parameterizedtarget) -> {
+			if (parameterizedtarget == null) {
+				build(scriptpath, target, monitor);
+			} else {
+				build(parameterizedtarget, monitor);
+			}
 		});
 	}
 
 	public void buildWithNewJob() {
-		withLatestOrChosenBuildTarget((scriptpath, target) -> {
-			ProjectBuilder.buildAsync(this, scriptpath, target);
+		withLatestOrChosenBuildTarget((scriptpath, target, parameterizedtarget) -> {
+			if (parameterizedtarget == null) {
+				ProjectBuilder.buildAsync(this, scriptpath, target);
+			} else {
+				ProjectBuilder.buildAsync(this, parameterizedtarget);
+			}
 		});
 	}
 
-	public boolean isLatestBuildScriptTargetEquals(SakerPath scriptpath, String target) {
+	public boolean isLatestBuildScriptTargetEquals(SakerPath scriptpath, String target, String parameterizeduuid) {
 		try {
+			String lastparameduuid = ideProject
+					.getPersistentProperty(LAST_PARAMETERIZED_BUILD_TARGET_UUID_QUALIFIED_NAME);
+			if (parameterizeduuid != null && parameterizeduuid.equals(lastparameduuid)) {
+				//no need to check the script path and target path, as they might've been moved meanwhile
+				return true;
+			}
 			String lastscriptpath = ideProject.getPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME);
 			if (lastscriptpath == null) {
 				return false;
@@ -650,20 +760,57 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 			if (!lasttargetname.equals(target)) {
 				return false;
 			}
+			if (!Objects.equals(lastparameduuid, parameterizeduuid)) {
+				return false;
+			}
 			return true;
 		} catch (Exception e) {
 			return false;
 		}
 	}
 
-	private void withLatestOrChosenBuildTarget(BiConsumer<SakerPath, String> consumer) {
+	private ParameterizedBuildTargetIDEProperty getParameterizedBuildTarget(String uuid) {
+		if (uuid == null) {
+			return null;
+		}
+		IDEProjectProperties props = getIDEProjectProperties();
+		if (props == null) {
+			return null;
+		}
+		Set<? extends ParameterizedBuildTargetIDEProperty> targets = props.getParameterizedBuildTargets();
+		if (targets == null) {
+			return null;
+		}
+		for (ParameterizedBuildTargetIDEProperty prop : targets) {
+			if (!uuid.equals(prop.getUuid())) {
+				continue;
+			}
+			return prop;
+		}
+		return null;
+	}
+
+	private void withLatestOrChosenBuildTarget(
+			TriConsumer<SakerPath, String, ParameterizedBuildTargetIDEProperty> consumer) {
 		try {
-			String lastscriptpath = ideProject.getPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME);
-			if (lastscriptpath != null) {
-				String lasttargetname = ideProject.getPersistentProperty(LAST_BUILD_TARGET_NAME_QUALIFIED_NAME);
-				SakerPath lastbuildpath = SakerPath.valueOf(lastscriptpath);
-				consumer.accept(lastbuildpath, lasttargetname);
-				return;
+			String lastparameduuid = ideProject
+					.getPersistentProperty(LAST_PARAMETERIZED_BUILD_TARGET_UUID_QUALIFIED_NAME);
+			if (lastparameduuid != null) {
+				ParameterizedBuildTargetIDEProperty paramedtarget = getParameterizedBuildTarget(lastparameduuid);
+				if (getParameterizedBuildTargetScriptExecutionPath(paramedtarget) != null) {
+					//if the script file is mapped to a valid execution path
+					consumer.accept(null, null, paramedtarget);
+					return;
+				}
+			} else {
+				String lastscriptpath = ideProject.getPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME);
+				if (lastscriptpath != null) {
+					String lasttargetname = ideProject.getPersistentProperty(LAST_BUILD_TARGET_NAME_QUALIFIED_NAME);
+					SakerPath lastbuildpath = SakerPath.valueOf(lastscriptpath);
+
+					consumer.accept(lastbuildpath, lasttargetname, null);
+					return;
+				}
 			}
 		} catch (Exception e) {
 			displayException(SakerLog.SEVERITY_ERROR,
@@ -671,13 +818,34 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		}
 		AskListItem chosen = askBuildTarget();
 		if (chosen != null) {
-			consumer.accept(chosen.scriptPath, chosen.target);
+			consumer.accept(chosen.scriptPath, chosen.target, chosen.parameterizedTarget);
 			return;
 		}
 	}
 
+	private void setLastBuildTarget(SakerPath scriptfile, String targetname, String parameterizedtargetuuid)
+			throws CoreException {
+		//nullify string representation for safety
+		ideProject.setPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME, Objects.toString(scriptfile, null));
+		ideProject.setPersistentProperty(LAST_BUILD_TARGET_NAME_QUALIFIED_NAME, targetname);
+		ideProject.setPersistentProperty(LAST_PARAMETERIZED_BUILD_TARGET_UUID_QUALIFIED_NAME, parameterizedtargetuuid);
+	}
+
+	private void clearLastBuildTarget() throws CoreException {
+		ideProject.setPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME, null);
+		ideProject.setPersistentProperty(LAST_BUILD_TARGET_NAME_QUALIFIED_NAME, null);
+		ideProject.setPersistentProperty(LAST_PARAMETERIZED_BUILD_TARGET_UUID_QUALIFIED_NAME, null);
+	}
+
+	public void addDefaultNewBuildFile() throws CoreException {
+//		SakerPath execpath = projectPathToExecutionPath(SakerPath.valueOf(SakerIDEProject.DEFAULT_BUILD_FILE_NAME));
+//		if (!isScriptModellingConfigurationAppliesTo(execpath)) {
+//			//TODO if the name is not included in the script configuration, ask for rename
+//		}
+		addNewBuildFile(SakerIDEProject.DEFAULT_BUILD_FILE_NAME);
+	}
+
 	public void addNewBuildFile(String name) throws CoreException {
-		//TODO if the name is not included in the script configuration, ask for rename
 		IFile file = ideProject.getFile(name);
 		if (file.exists()) {
 			//accepts null input stream to signal no contents, empty file
@@ -792,6 +960,34 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 	}
 
 	protected void build(SakerPath scriptfile, String targetname, IProgressMonitor monitor) {
+		build(scriptfile, targetname, null, null, targetname, monitor);
+	}
+
+	protected void build(ParameterizedBuildTargetIDEProperty parambuildtarget, IProgressMonitor monitor) {
+		SakerPath buildfilepath = getParameterizedBuildTargetScriptExecutionPath(parambuildtarget);
+		build(buildfilepath, parambuildtarget.getTargetName(), parambuildtarget.getBuildTargetParameters(),
+				parambuildtarget.getUuid(),
+				SakerIDESupportUtils.getParameterizedBuildTargetDisplayString(parambuildtarget), monitor);
+	}
+
+	/**
+	 * Runs a build.
+	 * 
+	 * @param scriptfile
+	 *            The absolute execution path of the build script.
+	 * @param targetname
+	 *            The target name to run.
+	 * @param buildtargetparameters
+	 *            The build target parameters to pass to the invoked target.
+	 * @param parameterizedtargetuuid
+	 *            The unique identifier of the parameterized target being invoked. May be <code>null</code>.
+	 * @param displaytargetname
+	 *            The target name to display in the Job title.
+	 * @param monitor
+	 *            The progress monitor if any.
+	 */
+	private void build(SakerPath scriptfile, String targetname, NavigableMap<String, String> buildtargetparameters,
+			String parameterizedtargetuuid, String displaytargetname, IProgressMonitor monitor) {
 		if (monitor == null) {
 			monitor = new NullProgressMonitor();
 		}
@@ -858,8 +1054,7 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 						.getBooleanValueOrDefault(projectproperties.getRequireTaskIDEConfiguration(), true));
 
 				try {
-					ideProject.setPersistentProperty(LAST_BUILD_SCRIPT_PATH_QUALIFIED_NAME, scriptfile.toString());
-					ideProject.setPersistentProperty(LAST_BUILD_TARGET_NAME_QUALIFIED_NAME, targetname);
+					setLastBuildTarget(scriptfile, targetname, parameterizedtargetuuid);
 				} catch (CoreException e) {
 					displayException(SakerLog.SEVERITY_ERROR,
 							"Failed to save last build information properties for project: " + ideProject.getName(), e);
@@ -871,12 +1066,8 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 							"Failed to delete markets on project: " + ideProject.getName(), e);
 				}
 
-				SakerPath thisworking = pathconfiguration.getWorkingDirectory();
-				SakerPath relativescriptpath = scriptfile;
-				if (thisworking != null && scriptfile.startsWith(thisworking)) {
-					relativescriptpath = thisworking.relativize(scriptfile);
-				}
-				String jobname = targetname + "@" + relativescriptpath;
+				SakerPath relativescriptpath = executionPathToProjectRelativePath(scriptfile);
+				String jobname = displaytargetname + "@" + relativescriptpath;
 
 				display.syncExec(new Runnable() {
 					@Override
@@ -958,7 +1149,7 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 					e.printStackTrace();
 				}
 				long starttime = System.nanoTime();
-				result = sakerProject.build(scriptfile, targetname, daemonenv, params);
+				result = sakerProject.build(scriptfile, targetname, daemonenv, params, buildtargetparameters);
 				long finishtime = System.nanoTime();
 
 				//so we cannot be interrupted any more
@@ -1179,74 +1370,103 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 	}
 
 	private AskListItem askBuildTarget() {
-		Object[][] diagres = { null };
-		PlatformUI.getWorkbench().getDisplay().syncExec(new Runnable() {
-			@Override
-			public void run() {
-				Shell activeShell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
-				Set<? extends SakerPath> buildfiles = getTrackedScriptPaths();
-				Iterator<? extends SakerPath> it = buildfiles.iterator();
-				if (!it.hasNext()) {
-					int newbuildfiledialogres = new NoBuildFileErrorDialog(activeShell).open();
-					if (newbuildfiledialogres == IDialogConstants.OK_ID) {
-						try {
-							addNewBuildFile(SakerIDEProject.DEFAULT_BUILD_FILE_NAME);
-						} catch (Exception e) {
-							displayException(SakerLog.SEVERITY_ERROR,
-									"Failed to create new build script file for project: " + ideProject.getName(), e);
-						}
-					}
-					return;
-				}
-				SakerPath workingdirpath = getWorkingDirectoryExecutionPath();
-
-				List<AskListItem> input = new ArrayList<>();
-				do {
-					SakerPath displaybuildfile;
-					SakerPath buildfile = it.next();
-					if (workingdirpath != null && buildfile.startsWith(workingdirpath)) {
-						displaybuildfile = workingdirpath.relativize(buildfile);
-					} else {
-						displaybuildfile = buildfile;
-					}
-
-					Set<String> targets;
-					try {
-						targets = getScriptTargets(buildfile);
-					} catch (Exception e) {
-						displayException(SakerLog.SEVERITY_WARNING,
-								"Failed to determine built targets of script file: " + buildfile, e);
-						continue;
-					}
-					if (!ObjectUtils.isNullOrEmpty(targets)) {
-						for (String target : targets) {
-							input.add(new AskListItem(buildfile, target, displaybuildfile));
-						}
-					}
-				} while (it.hasNext());
-				ListDialog listdialog = new ListDialog(activeShell);
-				listdialog.setTitle("Build target");
-				listdialog.setMessage("Choose a build target to run.");
-
-				listdialog.setInput(input);
-				listdialog.setContentProvider(ArrayContentProvider.getInstance());
-				listdialog.setLabelProvider(new LabelProvider());
-
-				listdialog.setHelpAvailable(false);
-				listdialog.open();
-				diagres[0] = listdialog.getResult();
-			}
+		AskListItem[] diagres = { null };
+		PlatformUI.getWorkbench().getDisplay().syncExec(() -> {
+			diagres[0] = openAskBuildTargetDialog();
 		});
-		if (diagres[0] == null || diagres[0].length == 0) {
+		if (diagres[0] == null) {
 			return null;
 		}
-		return (AskListItem) diagres[0][0];
+		return diagres[0];
+	}
+
+	private AskListItem openAskBuildTargetDialog() {
+		Shell activeShell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
+		Set<? extends SakerPath> buildfiles = getTrackedScriptPaths();
+		Iterator<? extends SakerPath> it = buildfiles.iterator();
+		if (!it.hasNext()) {
+			int newbuildfiledialogres = new NoBuildFileErrorDialog(activeShell).open();
+			if (newbuildfiledialogres == IDialogConstants.OK_ID) {
+				try {
+					addDefaultNewBuildFile();
+				} catch (Exception e) {
+					displayException(SakerLog.SEVERITY_ERROR,
+							"Failed to create new build script file for project: " + ideProject.getName(), e);
+				}
+			}
+			return null;
+		}
+
+		List<AskListItem> input = new ArrayList<>();
+		do {
+			SakerPath buildfile = it.next();
+			SakerPath displaybuildfile = ObjectUtils.nullDefault(executionPathToProjectRelativePath(buildfile),
+					buildfile);
+
+			Set<String> targets;
+			try {
+				targets = getScriptTargets(buildfile);
+			} catch (Exception e) {
+				displayException(SakerLog.SEVERITY_WARNING,
+						"Failed to determine built targets of script file: " + buildfile, e);
+				continue;
+			}
+			if (!ObjectUtils.isNullOrEmpty(targets)) {
+				for (String target : targets) {
+					input.add(new AskListItem(buildfile, target, displaybuildfile));
+				}
+			}
+		} while (it.hasNext());
+
+		IDEProjectProperties ideprops = getIDEProjectProperties();
+		if (ideprops != null) {
+			Set<? extends ParameterizedBuildTargetIDEProperty> paramedtargets = ideprops.getParameterizedBuildTargets();
+			if (paramedtargets != null) {
+				for (ParameterizedBuildTargetIDEProperty paramedtarget : paramedtargets) {
+					if (ObjectUtils.isNullOrEmpty(paramedtarget.getTargetName())) {
+						continue;
+					}
+					if (!paramedtarget.isParameterized()) {
+						//no additional parameters, makes no sense to invoke this instead of the actual target in the build script
+						continue;
+					}
+					SakerPath buildfile = getParameterizedBuildTargetScriptExecutionPath(paramedtarget);
+					if (buildfile == null) {
+						//the script path doesn't correspond to an actual execution path
+						continue;
+					}
+					if (!buildfiles.contains(buildfile)) {
+						//the script file is not tracked
+						continue;
+					}
+					SakerPath displaybuildfile = ObjectUtils.nullDefault(executionPathToProjectRelativePath(buildfile),
+							buildfile);
+					input.add(new AskListItem(displaybuildfile, paramedtarget));
+				}
+			}
+		}
+		ListDialog listdialog = new ListDialog(activeShell);
+		listdialog.setTitle("Build target");
+		listdialog.setMessage("Choose a build target to run.");
+
+		listdialog.setInput(input);
+		listdialog.setContentProvider(ArrayContentProvider.getInstance());
+		listdialog.setLabelProvider(new LabelProvider());
+
+		listdialog.setHelpAvailable(false);
+		listdialog.open();
+		Object[] dialogresult = listdialog.getResult();
+		AskListItem chosenitem = ObjectUtils.isNullOrEmpty(dialogresult) ? null : (AskListItem) dialogresult[0];
+		return chosenitem;
 	}
 
 	private static class AskListItem {
 		private SakerPath scriptPath;
 		private String target;
-		private SakerPath displayPath;
+
+		private ParameterizedBuildTargetIDEProperty parameterizedTarget;
+
+		private transient SakerPath displayPath;
 
 		public AskListItem(SakerPath scriptPath, String target, SakerPath displayPath) {
 			this.scriptPath = scriptPath;
@@ -1254,9 +1474,15 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 			this.displayPath = displayPath;
 		}
 
+		public AskListItem(SakerPath displayPath, ParameterizedBuildTargetIDEProperty parameterizedTarget) {
+			this.displayPath = displayPath;
+			this.parameterizedTarget = parameterizedTarget;
+		}
+
 		@Override
 		public String toString() {
-			return target + "@" + displayPath;
+			return (target == null ? SakerIDESupportUtils.getParameterizedBuildTargetDisplayString(parameterizedTarget)
+					: target) + "@" + displayPath;
 		}
 	}
 

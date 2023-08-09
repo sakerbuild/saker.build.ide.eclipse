@@ -279,7 +279,7 @@ public abstract class ScriptConfigAdditionWizard extends SakerWizard {
 				if (!ObjectUtils.isNullOrEmpty(scriptswc)) {
 					wildcardText.setText(scriptswc);
 				}
-				tableHandler.setOptions(editedScriptProperty.getScriptOptions());
+				tableHandler.setEntries(editedScriptProperty.getScriptOptions());
 			}
 
 			setControl(composite);
@@ -327,7 +327,7 @@ public abstract class ScriptConfigAdditionWizard extends SakerWizard {
 				return false;
 			}
 			ScriptConfigurationIDEProperty property = new ScriptConfigurationIDEProperty(wc.toString(),
-					tableHandler.getOptions(), cplocation, serviceenumerator);
+					tableHandler.getEntries(), cplocation, serviceenumerator);
 			finish(property);
 			return true;
 		}

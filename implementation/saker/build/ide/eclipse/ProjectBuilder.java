@@ -32,6 +32,9 @@ import org.eclipse.ui.console.IConsole;
 import org.eclipse.ui.console.IConsoleManager;
 
 import saker.build.file.path.SakerPath;
+import saker.build.ide.support.SakerIDESupportUtils;
+import saker.build.ide.support.properties.ParameterizedBuildTargetIDEProperty;
+import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class ProjectBuilder extends IncrementalProjectBuilder {
 
@@ -85,9 +88,28 @@ public class ProjectBuilder extends IncrementalProjectBuilder {
 		return console;
 	}
 
+	public static void buildAsync(EclipseSakerIDEProject sakereclipseproject,
+			ParameterizedBuildTargetIDEProperty parambuildtarget) {
+		//this valueOf should always succeed, as the caller should already validate it
+		SakerPath scriptpath = sakereclipseproject.getParameterizedBuildTargetScriptExecutionPath(parambuildtarget);
+		String displaytargetname = SakerIDESupportUtils.getParameterizedBuildTargetDisplayString(parambuildtarget);
+
+		String jobname = createBuildJobName(scriptpath, displaytargetname, sakereclipseproject);
+		Job j = new Job(jobname) {
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				sakereclipseproject.build(parambuildtarget, monitor);
+
+				return Status.OK_STATUS;
+			}
+		};
+		j.setPriority(Job.BUILD);
+		j.schedule();
+
+	}
+
 	public static void buildAsync(EclipseSakerIDEProject project, SakerPath scriptpath, String targetname) {
-		SakerPath projectworkingdir = project.getWorkingDirectoryExecutionPath();
-		String jobname = createBuildJobName(scriptpath, targetname, projectworkingdir);
+		String jobname = createBuildJobName(scriptpath, targetname, project);
 		Job j = new Job(jobname) {
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
@@ -100,12 +122,14 @@ public class ProjectBuilder extends IncrementalProjectBuilder {
 		j.schedule();
 	}
 
-	private static String createBuildJobName(SakerPath scriptpath, String targetname, SakerPath projectworkingdir) {
-		if (projectworkingdir == null) {
-			return targetname + "@" + scriptpath;
-		}
-		return targetname + "@"
-				+ (scriptpath.startsWith(projectworkingdir) ? projectworkingdir.relativize(scriptpath) : scriptpath);
+	private static String createBuildJobName(SakerPath scriptpath, String targetname, EclipseSakerIDEProject project) {
+		SakerPath displaypath = ObjectUtils.nullDefault(project.executionPathToProjectRelativePath(scriptpath),
+				scriptpath);
+		StringBuilder sb = new StringBuilder(targetname);
+		sb.append('@');
+		sb.append(displaypath);
+		return sb.toString();
+
 	}
 
 	@Override
@@ -117,7 +141,7 @@ public class ProjectBuilder extends IncrementalProjectBuilder {
 		// * building during a complete workspace build is usually not wished for
 		// * the target that is being build is unclear in some builds
 		// therefore, the builder can be invoked through the saker.build menu, or via hotkeys
-		
+
 //		if (kind == AUTO_BUILD) {
 //			return null;
 //		}

@@ -24,11 +24,10 @@ import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.console.IHyperlink;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
-
-import saker.build.ide.eclipse.Activator;
 
 public abstract class EditorOpenerHyperLink implements IHyperlink {
 	private int lineNumber;
@@ -53,7 +52,7 @@ public abstract class EditorOpenerHyperLink implements IHyperlink {
 
 	@Override
 	public void linkActivated() {
-		IWorkbenchWindow window = Activator.getDefault().getWorkbench().getActiveWorkbenchWindow();
+		IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
 		if (window != null) {
 			IWorkbenchPage page = window.getActivePage();
 			if (page != null) {

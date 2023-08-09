@@ -272,9 +272,15 @@ public class SakerProjectBuildConsole extends LogHighlightingConsole implements 
 					pathwithlocation = pathwithlocation.trim();
 				}
 				String line = matcher.group(CONSOLE_MARKER_GROUP_LINE);
-				int linenumber = line == null ? 1 : Integer.parseInt(line);
-				if (linenumber <= 0) {
-					linenumber = 1;
+				//1 based line number, 0 if not set
+				int linenumber;
+				if (line == null) {
+					linenumber = 0;
+				} else {
+					linenumber = Integer.parseInt(line);
+					if (linenumber <= 0) {
+						linenumber = 1;
+					}
 				}
 
 				if (!ObjectUtils.isNullOrEmpty(pathwithlocation)) {

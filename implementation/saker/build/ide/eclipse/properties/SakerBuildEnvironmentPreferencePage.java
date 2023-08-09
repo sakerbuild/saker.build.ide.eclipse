@@ -79,7 +79,6 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 	private Button clearAuthKeyStoreButton;
 
 	private Label authKeyStorePathLabel;
-	private Label authKeyStoreLabel;
 
 	public SakerBuildEnvironmentPreferencePage() {
 		super();
@@ -171,7 +170,7 @@ public class SakerBuildEnvironmentPreferencePage extends PreferencePage implemen
 				"The default port is " + DaemonLaunchParameters.DEFAULT_PORT
 						+ ", leave as empty to run in private mode.\n" + "Set 0 to use an OS determined port.");
 
-		authKeyStoreLabel = SakerBuildProjectPropertyPage.addLabelWithText(dgcomposite, "Authentication keystore: ");
+		SakerBuildProjectPropertyPage.addLabelWithText(dgcomposite, "Authentication keystore: ");
 
 		Composite keystorecomposite = new Composite(dgcomposite, SWT.NONE);
 		keystorecomposite.setLayout(new GridLayout(3, false));

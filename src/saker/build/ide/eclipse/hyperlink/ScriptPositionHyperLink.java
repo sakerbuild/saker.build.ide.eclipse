@@ -25,11 +25,10 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.console.IHyperlink;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.ITextEditor;
-
-import saker.build.ide.eclipse.Activator;
 
 public class ScriptPositionHyperLink implements IHyperlink {
 	private String fEditorId;
@@ -53,7 +52,7 @@ public class ScriptPositionHyperLink implements IHyperlink {
 
 	@Override
 	public void linkActivated() {
-		IWorkbenchWindow window = Activator.getDefault().getWorkbench().getActiveWorkbenchWindow();
+		IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
 		if (window != null) {
 			IWorkbenchPage page = window.getActivePage();
 			if (page != null) {
@@ -77,7 +76,7 @@ public class ScriptPositionHyperLink implements IHyperlink {
 
 	private String getEditorId() {
 		if (fEditorId == null) {
-			IWorkbench workbench = Activator.getDefault().getWorkbench();
+			IWorkbench workbench = PlatformUI.getWorkbench();
 			IEditorDescriptor desc = workbench.getEditorRegistry().getDefaultEditor(file.getName(),
 					getFileContentType());
 			if (desc == null) {

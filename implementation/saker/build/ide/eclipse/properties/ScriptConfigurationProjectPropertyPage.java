@@ -318,7 +318,7 @@ public class ScriptConfigurationProjectPropertyPage extends PropertyPage {
 		}
 	}
 
-	private final class ScriptingTreeLabelProvider extends LabelProvider implements IStyledLabelProvider {
+	private static final class ScriptingTreeLabelProvider extends LabelProvider implements IStyledLabelProvider {
 		@Override
 		public String getText(Object element) {
 			return getStyledText(element).getString();
@@ -690,7 +690,7 @@ public class ScriptConfigurationProjectPropertyPage extends PropertyPage {
 		return true;
 	}
 
-	private class ExclusionDialog extends TitleAreaDialog {
+	private static class ExclusionDialog extends TitleAreaDialog {
 		private Text wildcardText;
 
 		private String value;

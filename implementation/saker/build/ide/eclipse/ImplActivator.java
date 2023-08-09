@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ServiceConfigurationError;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceChangeEvent;
@@ -160,6 +161,14 @@ public class ImplActivator implements AutoCloseable, IResourceChangeListener {
 								if (!p.isOpen()) {
 									closeProject(p);
 								}
+							}
+						}
+					} else if (resource instanceof IFile) {
+						if (((delta.getFlags() & (IResourceDelta.MOVED_TO)) == (IResourceDelta.MOVED_TO))) {
+							EclipseSakerIDEProject eclipsesakerproject = getOrCreateSakerProject(project);
+							if (eclipsesakerproject != null) {
+								IFile file = (IFile) resource;
+								eclipsesakerproject.handleFileMove(file, delta.getMovedToPath());
 							}
 						}
 					}

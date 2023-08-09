@@ -111,7 +111,7 @@ public class UserParametersEnvironmentPreferencePage extends PreferencePage impl
 			tableHandler.setKeyValDialogTitle("Environment user parameter");
 			tableHandler.setKeyValDialogBaseMessage("Enter an environment user parameter for your build (-E option).");
 			tableHandler.addControl(parameterscomposite);
-			tableHandler.setOptions(userParameters);
+			tableHandler.setEntries(userParameters);
 			tableHandler.addModifyListener(ev -> {
 				tableHandler.setExtensionEntries(getCurrentExtensionEntries());
 				validateProperties();
@@ -145,7 +145,7 @@ public class UserParametersEnvironmentPreferencePage extends PreferencePage impl
 	}
 
 	private List<ExtensionProvidedEntry> getCurrentExtensionEntries() {
-		Map<String, String> userentries = SakerIDEPlugin.entrySetToMap(tableHandler.getOptions());
+		Map<String, String> userentries = SakerIDEPlugin.entrySetToMap(tableHandler.getEntries());
 		NavigableMap<String, String> currententries = plugin.getUserParametersWithContributors(userentries,
 				extensionHandler.getExtensionContributors(), null);
 		List<ExtensionProvidedEntry> result = new ArrayList<>();
@@ -194,7 +194,7 @@ public class UserParametersEnvironmentPreferencePage extends PreferencePage impl
 	protected void performDefaults() {
 		super.performDefaults();
 		this.userParameters = null;
-		tableHandler.setOptions(userParameters);
+		tableHandler.setEntries(userParameters);
 
 		extensionHandler.enableAll();
 	}
@@ -204,7 +204,7 @@ public class UserParametersEnvironmentPreferencePage extends PreferencePage impl
 		try {
 			plugin.setIDEPluginProperties(
 					SimpleIDEPluginProperties.builder(plugin.getIDEPluginProperties())
-							.setUserParameters(tableHandler.getOptions()).build(),
+							.setUserParameters(tableHandler.getEntries()).build(),
 					extensionHandler.getExtensionContributors());
 		} catch (IOException e) {
 			plugin.displayException(SakerLog.SEVERITY_ERROR, "Failed to save plugin properties.", e);

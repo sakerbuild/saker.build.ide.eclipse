@@ -130,12 +130,12 @@ public class UserParametersProjectPropertyPage extends PropertyPage {
 			tableHandler.setKeyValDialogTitle("Execution user parameter");
 			tableHandler.setKeyValDialogBaseMessage("Enter an execution user parameter for your build (-U option).");
 			tableHandler.addControl(parameterscomposite);
-			tableHandler.setOptions(userParameters);
+			tableHandler.setEntries(userParameters);
 			tableHandler.addModifyListener(ev -> {
 				tableHandler.setExtensionEntries(getCurrentExtensionEntries());
 				validateProperties();
 			});
-			tableHandler.setKeyProposalSuppliers(() -> {
+			tableHandler.setKeyProposalSupplier(() -> {
 				Set<String> result = new TreeSet<>();
 				for (EclipseSakerIDEProject p : ideProject.getPlugin().getLoadedProjects()) {
 					Set<? extends Entry<String, String>> puserparams = p.getIDEProjectProperties().getUserParameters();
@@ -152,7 +152,7 @@ public class UserParametersProjectPropertyPage extends PropertyPage {
 				}
 				return result.toArray(ObjectUtils.EMPTY_STRING_ARRAY);
 			});
-			tableHandler.setValueProposalSuppliers(key -> {
+			tableHandler.setValueContentProposalArraySupplier(key -> {
 				Set<String> result = new TreeSet<>();
 				for (EclipseSakerIDEProject p : ideProject.getPlugin().getLoadedProjects()) {
 					Set<? extends Entry<String, String>> puserparams = p.getIDEProjectProperties().getUserParameters();
@@ -201,7 +201,7 @@ public class UserParametersProjectPropertyPage extends PropertyPage {
 	}
 
 	private List<ExtensionProvidedEntry> getCurrentExtensionEntries() {
-		Map<String, String> userentries = SakerIDEPlugin.entrySetToMap(tableHandler.getOptions());
+		Map<String, String> userentries = SakerIDEPlugin.entrySetToMap(tableHandler.getEntries());
 		NavigableMap<String, String> currententries = ideProject.getUserParametersWithContributors(userentries,
 				extensionHandler.getExtensionContributors(), null);
 		List<ExtensionProvidedEntry> result = new ArrayList<>();
@@ -251,7 +251,7 @@ public class UserParametersProjectPropertyPage extends PropertyPage {
 	protected void performDefaults() {
 		super.performDefaults();
 		this.userParameters = null;
-		tableHandler.setOptions(userParameters);
+		tableHandler.setEntries(userParameters);
 
 		extensionHandler.enableAll();
 	}
@@ -261,7 +261,7 @@ public class UserParametersProjectPropertyPage extends PropertyPage {
 		try {
 			ideProject.setIDEProjectProperties(
 					SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
-							.setUserParameters(tableHandler.getOptions()).build(),
+							.setUserParameters(tableHandler.getEntries()).build(),
 					extensionHandler.getExtensionContributors());
 		} catch (IOException e) {
 			ideProject.displayException(SakerLog.SEVERITY_ERROR, "Failed to save project properties.", e);
