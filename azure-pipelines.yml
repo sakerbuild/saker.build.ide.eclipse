@@ -12,7 +12,7 @@ pool:
 steps:
 - script: |
     set -e
-    TAGVER=$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/')
+    TAGVER=$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/' | cut -d . -f 1,2,3)
     sed -i -s "s/111.222.333.qualifier/$TAGVER.qualifier/g" META-INF/MANIFEST.MF
     echo "New version: $(cat META-INF/MANIFEST.MF | grep 'Bundle-Version:')"
   condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
@@ -23,7 +23,7 @@ steps:
   displayName: 'Set BUILD_VERSION_NUMBER'
 - script: |
     set -e
-    TAGVER=$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/')
+    TAGVER=$(echo $BUILD_SOURCEBRANCHNAME | sed -r 's/v(.*)/\1/' | cut -d . -f 1,2,3)
     if [ $(BUILD_VERSION_NUMBER) != "$TAGVER" ]; then
       echo "Bundle-Version: $(BUILD_VERSION_NUMBER) doesn't match tag version: $TAGVER"
       exit 1
