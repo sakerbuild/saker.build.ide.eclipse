@@ -39,14 +39,14 @@ steps:
     buildVersionToDownload: 'latest'
     branchName: 'refs/heads/master'
     downloadType: 'single'
-    artifactName: 'export_jars_8'
+    artifactName: 'Linux_export_jars_8'
     downloadPath: '.'
   condition: not(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
   displayName: 'Download latest saker.build JARs from master branch pipeline'
 - script: |
     set -e
-    cp export_jars_8/saker.build.jar ./
-    cp export_jars_8/saker.build-ide.jar ./
+    cp Linux_export_jars_8/saker.build.jar ./
+    cp Linux_export_jars_8/saker.build-ide.jar ./
   condition: not(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
   displayName: 'Copy artifact JARs to working directory'
 
