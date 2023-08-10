@@ -110,7 +110,7 @@ import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.editors.text.EditorsUI;
-import org.eclipse.ui.editors.text.TextEditor;
+import org.eclipse.ui.texteditor.AbstractDecoratedTextEditor;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.themes.ITheme;
 import org.eclipse.ui.views.contentoutline.ContentOutlinePage;
@@ -165,7 +165,7 @@ import saker.build.thirdparty.saker.util.io.ResourceCloser;
 import saker.build.thirdparty.saker.util.io.function.IOSupplier;
 import saker.build.thirdparty.saker.util.thread.ThreadUtils;
 
-public class BuildFileEditor extends TextEditor implements ModelUpdateListener {
+public class BuildFileEditor extends AbstractDecoratedTextEditor implements ModelUpdateListener {
 	public static final String ID = "saker.build.ide.eclipse.script.editor";
 
 	//IWorkbenchThemeConstants.ACTIVE_TAB_BG_END
@@ -857,43 +857,43 @@ public class BuildFileEditor extends TextEditor implements ModelUpdateListener {
 		}
 	}
 
-	public class Configuration extends SourceViewerConfiguration {
+	private static final class BuildFileReconcilingStrategy implements IReconcilingStrategy {
+		private IDocument document;
 
-		private final class BuildFileReconciler implements IReconciler {
-			private final class BuildFileReconcilingStrategy implements IReconcilingStrategy {
-				private IDocument document;
-
-				@Override
-				public void setDocument(IDocument document) {
-					this.document = document;
-				}
-
-				@Override
-				public void reconcile(DirtyRegion dirtyRegion, IRegion subRegion) {
-				}
-
-				@Override
-				public void reconcile(IRegion partition) {
-				}
-			}
-
-			private ITextViewer textViewer;
-
-			@Override
-			public void uninstall() {
-				this.textViewer = null;
-			}
-
-			@Override
-			public void install(ITextViewer textViewer) {
-				this.textViewer = textViewer;
-			}
-
-			@Override
-			public IReconcilingStrategy getReconcilingStrategy(String contentType) {
-				return new BuildFileReconcilingStrategy();
-			}
+		@Override
+		public void setDocument(IDocument document) {
+			this.document = document;
 		}
+
+		@Override
+		public void reconcile(DirtyRegion dirtyRegion, IRegion subRegion) {
+		}
+
+		@Override
+		public void reconcile(IRegion partition) {
+		}
+	}
+
+	private static final class BuildFileReconciler implements IReconciler {
+		private ITextViewer textViewer;
+
+		@Override
+		public void uninstall() {
+			this.textViewer = null;
+		}
+
+		@Override
+		public void install(ITextViewer textViewer) {
+			this.textViewer = textViewer;
+		}
+
+		@Override
+		public IReconcilingStrategy getReconcilingStrategy(String contentType) {
+			return new BuildFileReconcilingStrategy();
+		}
+	}
+
+	public class Configuration extends SourceViewerConfiguration {
 
 		private class BuildFilePresentationReconciler implements IPresentationReconciler, ITextListener {
 			private class BuildFilePresentationRepairer implements IPresentationRepairer {
