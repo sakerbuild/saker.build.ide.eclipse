@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -80,7 +81,7 @@ public class SakerProjectBuildConsole extends LogHighlightingConsole implements 
 
 	private EclipseSakerIDEProject project;
 
-	private final Set<BuildStateObserver> buildStateObservers = Collections.synchronizedSet(new HashSet<>());
+	private final Set<BuildStateObserver> buildStateObservers = ConcurrentHashMap.newKeySet();
 
 	public SakerProjectBuildConsole(EclipseSakerIDEProject project, String name, String consoleType) {
 		super(name, consoleType);

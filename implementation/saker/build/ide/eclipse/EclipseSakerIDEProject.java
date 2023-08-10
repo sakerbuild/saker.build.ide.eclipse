@@ -895,7 +895,7 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		}
 
 		private final ProgressMonitorWrapper wrapper;
-		private Thread buildThread = Thread.currentThread();
+		private volatile Thread buildThread = Thread.currentThread();
 		private ScriptPositionedExceptionView stackTrace;
 
 		public ProjectBuildConsoleInterfaceAccessor(ProgressMonitorWrapper wrapper) {
@@ -910,16 +910,12 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 
 		@Override
 		public void interruptAndStop() {
-			synchronized (this) {
-				ThreadUtils.interruptThread(buildThread);
-			}
+			ThreadUtils.interruptThread(buildThread);
 			stop();
 		}
 
 		public void clearBuildThread() {
-			synchronized (this) {
-				this.buildThread = null;
-			}
+			this.buildThread = null;
 		}
 
 		@Override
@@ -934,7 +930,7 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 
 	private static class ProgressMonitorWrapper implements ExecutionProgressMonitor, TaskProgressMonitor {
 		protected IProgressMonitor progressMonitor;
-		private volatile boolean cancelled;
+		protected volatile boolean cancelled;
 
 		public ProgressMonitorWrapper(IProgressMonitor progressMonitor) {
 			this.progressMonitor = progressMonitor;
@@ -1093,55 +1089,8 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 				params.setStandardOutput(ByteSink.valueOf(out));
 				params.setErrorOutput(ByteSink.valueOf(err));
 				params.setStandardInput(ByteSource.valueOf(consolein));
-				BuildUserPromptHandler userprompthandler = new BuildUserPromptHandler() {
-					@Override
-					public int prompt(String title, String message, List<String> options) {
-						Objects.requireNonNull(options, "options");
-						if (options.isEmpty()) {
-							return -1;
-						}
-						int[] res = { -1 };
-						synchronized (this) {
-							display.syncExec(() -> {
-								try {
-									UserPromptBuildDialog dialog = new UserPromptBuildDialog(display.getActiveShell(),
-											title, message, options);
-									if (dialog.open() == IDialogConstants.OK_ID) {
-										res[0] = dialog.getSelectedButton();
-									}
-								} catch (Exception e) {
-									displayException(SakerLog.SEVERITY_ERROR,
-											"Failed to promp user during build for project: " + ideProject.getName(),
-											e);
-								}
-							});
-						}
-						return res[0];
-					}
-				};
-				params.setUserPrompHandler(userprompthandler);
-				SecretInputReader secretinputreader = new SecretInputReader() {
-					@Override
-					public synchronized String readSecret(String titleinfo, String message, String prompt,
-							String secretidentifier) {
-						String[] res = { null };
-						display.syncExec(() -> {
-							try {
-								SecretReaderBuildDialog dialog = new SecretReaderBuildDialog(display.getActiveShell(),
-										titleinfo, message, prompt, secretidentifier);
-								if (dialog.open() == IDialogConstants.OK_ID) {
-									res[0] = dialog.getResult();
-								}
-							} catch (Exception e) {
-								displayException(SakerLog.SEVERITY_ERROR,
-										"Failed to get secret value during build for project: " + ideProject.getName(),
-										e);
-							}
-						});
-						return res[0];
-					}
-				};
-				params.setSecretInputReader(secretinputreader);
+				params.setUserPrompHandler(new DialogBuildUserPromptHandler(display));
+				params.setSecretInputReader(new DialogSecretInputReader(display));
 				try {
 					out.write(("Build started. (" + jobname + ")\n").getBytes());
 				} catch (IOException e) {
@@ -2089,4 +2038,71 @@ public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerP
 		}
 	}
 
+	private final class DialogSecretInputReader implements SecretInputReader {
+		private final Display display;
+		private final Lock lock = new ReentrantLock();
+
+		public DialogSecretInputReader(Display display) {
+			this.display = display;
+		}
+
+		@Override
+		public String readSecret(String titleinfo, String message, String prompt, String secretidentifier) {
+			String[] res = { null };
+			lock.lock();
+			try {
+				display.syncExec(() -> {
+					try {
+						SecretReaderBuildDialog dialog = new SecretReaderBuildDialog(display.getActiveShell(),
+								titleinfo, message, prompt, secretidentifier);
+						if (dialog.open() == IDialogConstants.OK_ID) {
+							res[0] = dialog.getResult();
+						}
+					} catch (Exception e) {
+						displayException(SakerLog.SEVERITY_ERROR,
+								"Failed to get secret value during build for project: " + ideProject.getName(), e);
+					}
+				});
+			} finally {
+				lock.unlock();
+			}
+			return res[0];
+		}
+	}
+
+	private final class DialogBuildUserPromptHandler implements BuildUserPromptHandler {
+		private final Display display;
+		private final Lock lock = new ReentrantLock();
+
+		private DialogBuildUserPromptHandler(Display display) {
+			this.display = display;
+		}
+
+		@Override
+		public int prompt(String title, String message, List<String> options) {
+			Objects.requireNonNull(options, "options");
+			if (options.isEmpty()) {
+				return -1;
+			}
+			int[] res = { -1 };
+			lock.lock();
+			try {
+				display.syncExec(() -> {
+					try {
+						UserPromptBuildDialog dialog = new UserPromptBuildDialog(display.getActiveShell(), title,
+								message, options);
+						if (dialog.open() == IDialogConstants.OK_ID) {
+							res[0] = dialog.getSelectedButton();
+						}
+					} catch (Exception e) {
+						displayException(SakerLog.SEVERITY_ERROR,
+								"Failed to promp user during build for project: " + ideProject.getName(), e);
+					}
+				});
+			} finally {
+				lock.unlock();
+			}
+			return res[0];
+		}
+	}
 }

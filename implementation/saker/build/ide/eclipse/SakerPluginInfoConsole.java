@@ -17,6 +17,8 @@ package saker.build.ide.eclipse;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
@@ -32,7 +34,7 @@ public class SakerPluginInfoConsole extends LogHighlightingConsole implements IS
 
 	private final IOConsoleOutputStream openedOutStream;
 	private final IOConsoleOutputStream openedErrorStream;
-	private final Object writeLock = new Object();
+	private final Lock writeLock = new ReentrantLock();
 
 	public SakerPluginInfoConsole(EclipseSakerIDEPlugin plugin, String name, String consoleType) {
 		super(name, consoleType);
@@ -47,7 +49,8 @@ public class SakerPluginInfoConsole extends LogHighlightingConsole implements IS
 		if (message == null && exc == null) {
 			return;
 		}
-		synchronized (writeLock) {
+		writeLock.lock();
+		try {
 			try (PrintStream ps = new PrintStream(StreamUtils.closeProtectedOutputStream(openedErrorStream))) {
 				if (message != null) {
 					ps.println(message);
@@ -57,6 +60,8 @@ public class SakerPluginInfoConsole extends LogHighlightingConsole implements IS
 				}
 				ps.println();
 			}
+		} finally {
+			writeLock.unlock();
 		}
 	}
 
@@ -64,14 +69,15 @@ public class SakerPluginInfoConsole extends LogHighlightingConsole implements IS
 		if (message == null) {
 			return;
 		}
+		writeLock.lock();
 		try {
-			synchronized (writeLock) {
-				openedErrorStream.write(message);
-				openedErrorStream.write(System.lineSeparator());
-			}
+			openedErrorStream.write(message);
+			openedErrorStream.write(System.lineSeparator());
 		} catch (IOException e) {
 			// print to standard error
 			e.printStackTrace();
+		} finally {
+			writeLock.unlock();
 		}
 	}
 
