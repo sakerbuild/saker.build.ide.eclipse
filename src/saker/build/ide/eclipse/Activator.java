@@ -144,21 +144,26 @@ public class Activator extends AbstractUIPlugin {
 				getLog().error("Failed to close saker.build plugin implementation.", e);
 			}
 		}
-		if (ideSupportJar != null) {
-			try {
-				ideSupportJar.close();
-			} catch (IOException e) {
-				getLog().error("Failed to close saker.build IDE support implementation JAR.", e);
+		try {
+			super.stop(context);
+		} finally {
+			//close the jars after the super.stop is called, as the jars are backing the implementation classloader,
+			// so they might still be used in some callbacks
+			if (ideSupportJar != null) {
+				try {
+					ideSupportJar.close();
+				} catch (IOException e) {
+					getLog().error("Failed to close saker.build IDE support implementation JAR.", e);
+				}
+			}
+			if (sakerJar != null) {
+				try {
+					sakerJar.close();
+				} catch (IOException e) {
+					getLog().error("Failed to close saker.build implementation JAR.", e);
+				}
 			}
 		}
-		if (sakerJar != null) {
-			try {
-				sakerJar.close();
-			} catch (IOException e) {
-				getLog().error("Failed to close saker.build implementation JAR.", e);
-			}
-		}
-		super.stop(context);
 	}
 
 	public static Path getAbsolutePath(IResource resource) {
