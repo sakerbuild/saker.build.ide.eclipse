@@ -56,15 +56,20 @@ public class ImplementationClassLoader extends ClassLoader {
 			return defineClass(name, classbytes, 0, classbytes.length);
 		}
 		for (JarFile jf : jars) {
-			ZipEntry jfentry = jf.getEntry(cfilepath);
-			if (jfentry != null) {
-				byte[] classbytes;
-				try (InputStream is = jf.getInputStream(jfentry)) {
-					classbytes = readStreamFully(is);
-				} catch (Exception e) { // ZipFile.ensureOpen throws IllegalStateException so catch all kinds of exceptions
-					throw new ClassNotFoundException(name, e);
+			try {
+				ZipEntry jfentry = jf.getEntry(cfilepath);
+				if (jfentry != null) {
+					byte[] classbytes;
+					try (InputStream is = jf.getInputStream(jfentry)) {
+						classbytes = readStreamFully(is);
+					}
+					return defineClass(name, classbytes, 0, classbytes.length);
 				}
-				return defineClass(name, classbytes, 0, classbytes.length);
+			} catch (Exception e) {
+				// ZipFile.ensureOpen 
+				// ZipFile.getEntry
+				//     throws IllegalStateException in case of closed file, so catch all kinds of exceptions
+				throw new ClassNotFoundException(name, e);
 			}
 		}
 		return super.findClass(name);
