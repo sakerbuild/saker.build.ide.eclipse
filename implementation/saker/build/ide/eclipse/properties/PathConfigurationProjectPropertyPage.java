@@ -52,6 +52,7 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.dialogs.PropertyPage;
 
 import saker.build.file.path.SakerPath;
+import saker.build.ide.eclipse.Activator;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.eclipse.PluginUtils;
@@ -68,7 +69,7 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
 
 public class PathConfigurationProjectPropertyPage extends PropertyPage {
-	public static final String ID = "saker.build.ide.eclipse.properties.pathConfigurationProjectPropertyPage";
+	public static final String ID = Activator.PLUGIN_ID + ".properties.pathConfigurationProjectPropertyPage";
 
 	public static final String LABEL_PROJECT_RELATIVE = "Project relative";
 	public static final String LABEL_LOCAL_FILESYSTEM = "Local file system";

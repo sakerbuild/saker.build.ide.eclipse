@@ -15,11 +15,12 @@
  */
 package saker.build.ide.eclipse.handlers;
 
+import saker.build.ide.eclipse.Activator;
 import saker.build.ide.eclipse.ImplClassLoadingExtensionFactory;
 
 public class UnconfigureCommandHandlerExtensionFactory extends ImplClassLoadingExtensionFactory {
 	@Override
 	protected String getExtensionClassName() {
-		return "saker.build.ide.eclipse.handlers.UnconfigureCommandHandler";
+		return Activator.PLUGIN_ID + ".handlers.UnconfigureCommandHandler";
 	}
 }

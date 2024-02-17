@@ -52,7 +52,7 @@ import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class UserParametersProjectPropertyPage extends PropertyPage {
-	public static final String ID = "saker.build.ide.eclipse.properties.userParametersProjectPropertyPage";
+	public static final String ID = Activator.PLUGIN_ID + ".properties.userParametersProjectPropertyPage";
 
 	private EclipseSakerIDEProject ideProject;
 	private Set<? extends Entry<String, String>> userParameters = null;

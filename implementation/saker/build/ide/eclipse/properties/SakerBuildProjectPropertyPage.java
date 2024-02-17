@@ -44,6 +44,7 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.dialogs.PropertyPage;
 
 import saker.build.file.path.SakerPath;
+import saker.build.ide.eclipse.Activator;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SakerIDEProject;
@@ -57,7 +58,7 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
 
 public class SakerBuildProjectPropertyPage extends PropertyPage {
-	public static final String ID = "saker.build.ide.eclipse.properties.sakerBuildProjectPropertyPage";
+	public static final String ID = Activator.PLUGIN_ID + ".properties.sakerBuildProjectPropertyPage";
 
 	private static final int RETURN_CODE_REMOVE = 2;
 

@@ -15,11 +15,12 @@
  */
 package saker.build.ide.eclipse.properties;
 
+import saker.build.ide.eclipse.Activator;
 import saker.build.ide.eclipse.ImplClassLoadingExtensionFactory;
 
 public class SakerBuildEnvironmentPreferencePageExtensionFactory extends ImplClassLoadingExtensionFactory {
 	@Override
 	protected String getExtensionClassName() {
-		return "saker.build.ide.eclipse.properties.SakerBuildEnvironmentPreferencePage";
+		return Activator.PLUGIN_ID + ".properties.SakerBuildEnvironmentPreferencePage";
 	}
 }

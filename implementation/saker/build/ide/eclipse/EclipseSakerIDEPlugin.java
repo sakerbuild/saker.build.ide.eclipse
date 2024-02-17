@@ -94,7 +94,7 @@ public final class EclipseSakerIDEPlugin implements Closeable, ExceptionDisplaye
 			+ "/keystore-passwords";
 
 	private static final String NODE_ARRAY_EXTENSION_DISABLEMENTS = "extension_disablements";
-	private static final String CONFIG_FILE_ROOT_OBJECT_NAME = "saker.build.ide.eclipse.plugin.config";
+	private static final String CONFIG_FILE_ROOT_OBJECT_NAME = Activator.PLUGIN_ID + ".plugin.config";
 	private static final String IDE_PLUGIN_PROPERTIES_FILE_NAME = "." + CONFIG_FILE_ROOT_OBJECT_NAME;
 
 	private final SakerIDEPlugin sakerPlugin;

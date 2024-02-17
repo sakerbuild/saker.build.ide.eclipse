@@ -52,15 +52,26 @@ public class Activator extends AbstractUIPlugin {
 	// The plug-in ID
 	public static final String PLUGIN_ID = "saker.build.ide.eclipse"; //$NON-NLS-1$
 
-	public static final String EXTENSION_POINT_ID_IDE_CONFIGURATION_PARSER = "saker.build.ide.eclipse.extension.ideConfigurationTypeHandler";
-	public static final String EXTENSION_POINT_ID_ENVIRONMENT_USER_PARAMETER_CONTRIBUTOR = "saker.build.ide.eclipse.extension.environmentUserParameterContributor";
-	public static final String EXTENSION_POINT_ID_EXECUTION_USER_PARAMETER_CONTRIBUTOR = "saker.build.ide.eclipse.extension.executionUserParameterContributor";
-	public static final String EXTENSION_POINT_ID_SCRIPT_OUTLINE_DESIGNER = "saker.build.ide.eclipse.extension.scriptOutlineDesigner";
-	public static final String EXTENSION_POINT_ID_SCRIPT_INFORMATION_DESIGNER = "saker.build.ide.eclipse.extension.scriptInformationDesigner";
-	public static final String EXTENSION_POINT_ID_SCRIPT_PROPOSAL_DESIGNER = "saker.build.ide.eclipse.extension.scriptProposalDesigner";
+	private static final String EXTENSION_POINT_SCOPE = ".extension";
+
+	public static final String EXTENSION_POINT_ID_IDE_CONFIGURATION_PARSER = PLUGIN_ID + EXTENSION_POINT_SCOPE
+			+ ".ideConfigurationTypeHandler";
+	public static final String EXTENSION_POINT_ID_ENVIRONMENT_USER_PARAMETER_CONTRIBUTOR = PLUGIN_ID
+			+ EXTENSION_POINT_SCOPE + ".environmentUserParameterContributor";
+	public static final String EXTENSION_POINT_ID_EXECUTION_USER_PARAMETER_CONTRIBUTOR = PLUGIN_ID
+			+ EXTENSION_POINT_SCOPE + ".executionUserParameterContributor";
+	public static final String EXTENSION_POINT_ID_SCRIPT_OUTLINE_DESIGNER = PLUGIN_ID + EXTENSION_POINT_SCOPE
+			+ ".scriptOutlineDesigner";
+	public static final String EXTENSION_POINT_ID_SCRIPT_INFORMATION_DESIGNER = PLUGIN_ID + EXTENSION_POINT_SCOPE
+			+ ".scriptInformationDesigner";
+	public static final String EXTENSION_POINT_ID_SCRIPT_PROPOSAL_DESIGNER = PLUGIN_ID + EXTENSION_POINT_SCOPE
+			+ ".scriptProposalDesigner";
 
 	public static final ImageDescriptor IMAGE_DESCRIPTOR_EXT_POINT = getImageDescriptor("icons/ext_point_obj.png");
 	public static final Image IMAGE_EXT_POINT = createImage(IMAGE_DESCRIPTOR_EXT_POINT);
+
+	// ImplActivator is in the same package as us, which equals to the plugin id
+	private static final String IMPL_ACTIVATOR_CLASS_NAME = PLUGIN_ID + ".ImplActivator";
 
 	// The shared instance
 	private static Activator plugin;
@@ -124,7 +135,7 @@ public class Activator extends AbstractUIPlugin {
 
 			implClassLoader = new ImplementationClassLoader(context.getBundle(),
 					Arrays.asList(sakerJar, ideSupportJar));
-			Class<?> c = Class.forName("saker.build.ide.eclipse.ImplActivator", false, implClassLoader);
+			Class<?> c = Class.forName(IMPL_ACTIVATOR_CLASS_NAME, false, implClassLoader);
 			implActivator = c.getConstructor().newInstance();
 			c.getMethod("start", ImplementationStartArguments.class).invoke(implActivator,
 					new ImplementationStartArguments(this, context, sakerjarpath));

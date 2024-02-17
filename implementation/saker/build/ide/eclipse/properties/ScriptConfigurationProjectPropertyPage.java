@@ -66,6 +66,7 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.ui.dialogs.PropertyPage;
 
 import saker.build.file.path.WildcardPath;
+import saker.build.ide.eclipse.Activator;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SakerIDEProject;
@@ -80,7 +81,7 @@ import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class ScriptConfigurationProjectPropertyPage extends PropertyPage {
-	public static final String ID = "saker.build.ide.eclipse.properties.scriptConfigurationProjectPropertyPage";
+	public static final String ID = Activator.PLUGIN_ID + ".properties.scriptConfigurationProjectPropertyPage";
 
 	private static final AtomicIntegerFieldUpdater<ScriptConfigurationProjectPropertyPage> AIFU_propertyCounter = AtomicIntegerFieldUpdater
 			.newUpdater(ScriptConfigurationProjectPropertyPage.class, "propertyCounter");

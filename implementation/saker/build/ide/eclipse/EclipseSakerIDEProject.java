@@ -163,7 +163,7 @@ import saker.build.thirdparty.saker.util.io.StreamUtils;
 import saker.build.thirdparty.saker.util.thread.ThreadUtils;
 
 public final class EclipseSakerIDEProject implements ExceptionDisplayer, ISakerProject {
-	private static final String CONFIG_FILE_ROOT_OBJECT_NAME = "saker.build.ide.eclipse.project.config";
+	private static final String CONFIG_FILE_ROOT_OBJECT_NAME = Activator.PLUGIN_ID + ".project.config";
 	private static final String PROPERTIES_FILE_NAME = "." + CONFIG_FILE_ROOT_OBJECT_NAME;
 
 	public interface ProjectPropertiesChangeListener {

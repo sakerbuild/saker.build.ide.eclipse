@@ -55,6 +55,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.ui.dialogs.PropertyPage;
 
+import saker.build.ide.eclipse.Activator;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SakerIDEProject;
@@ -69,7 +70,7 @@ import saker.build.runtime.execution.SakerLog;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class RepositoriesProjectPropertyPage extends PropertyPage {
-	public static final String ID = "saker.build.ide.eclipse.properties.repositoriesProjectPropertyPage";
+	public static final String ID = Activator.PLUGIN_ID + ".properties.repositoriesProjectPropertyPage";
 
 	private static final AtomicIntegerFieldUpdater<RepositoriesProjectPropertyPage> AIFU_propertyCounter = AtomicIntegerFieldUpdater
 			.newUpdater(RepositoriesProjectPropertyPage.class, "propertyCounter");
@@ -523,7 +524,7 @@ public class RepositoriesProjectPropertyPage extends PropertyPage {
 		try {
 			ideProject.setIDEProjectProperties(SimpleIDEProjectProperties.builder(ideProject.getIDEProjectProperties())
 					.setRepositories(repos).build());
-		} catch ( IOException e) {
+		} catch (IOException e) {
 			ideProject.displayException(SakerLog.SEVERITY_ERROR, "Failed to save project properties.", e);
 			return false;
 		}

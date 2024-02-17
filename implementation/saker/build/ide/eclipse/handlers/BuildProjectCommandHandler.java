@@ -27,12 +27,13 @@ import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.handlers.HandlerUtil;
 
+import saker.build.ide.eclipse.Activator;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
 
 public class BuildProjectCommandHandler extends AbstractHandler {
 
-	public static final String COMMAND_ID = "saker.build.ide.eclipse.commands.BuildProjectCommand";
+	public static final String COMMAND_ID = Activator.PLUGIN_ID + ".commands.BuildProjectCommand";
 
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {

@@ -166,7 +166,7 @@ import saker.build.thirdparty.saker.util.io.function.IOSupplier;
 import saker.build.thirdparty.saker.util.thread.ThreadUtils;
 
 public class BuildFileEditor extends AbstractDecoratedTextEditor implements ModelUpdateListener {
-	public static final String ID = "saker.build.ide.eclipse.script.editor";
+	public static final String ID = Activator.PLUGIN_ID + ".script.editor";
 
 	//IWorkbenchThemeConstants.ACTIVE_TAB_BG_END
 	private static final String BACKGROUND_COLOR_REGISTRY_PROPERTY_NAME = "org.eclipse.ui.workbench.ACTIVE_TAB_BG_END";

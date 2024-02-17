@@ -61,6 +61,7 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.ui.dialogs.PropertyPage;
 
+import saker.build.ide.eclipse.Activator;
 import saker.build.ide.eclipse.EclipseSakerIDEProject;
 import saker.build.ide.eclipse.ImplActivator;
 import saker.build.ide.support.SakerIDEProject;
@@ -75,7 +76,7 @@ import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 public class DaemonConnectionsProjectPropertyPage extends PropertyPage {
-	public static final String ID = "saker.build.ide.eclipse.properties.daemonConnectionsProjectPropertyPage";
+	public static final String ID = Activator.PLUGIN_ID + ".properties.daemonConnectionsProjectPropertyPage";
 
 	private EclipseSakerIDEProject ideProject;
 	private List<TreePropertyItem<DaemonConnectionIDEProperty>> connectionItems = new ArrayList<>();

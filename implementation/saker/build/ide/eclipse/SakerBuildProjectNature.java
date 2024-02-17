@@ -27,7 +27,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 
 public class SakerBuildProjectNature implements IProjectNature {
-	public static final String NATURE_ID = "saker.build.ide.eclipse.project.nature";
+	public static final String NATURE_ID = Activator.PLUGIN_ID + ".project.nature";
 	private IProject project;
 
 	@Override
