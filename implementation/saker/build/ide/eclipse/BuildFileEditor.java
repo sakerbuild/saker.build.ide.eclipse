@@ -349,7 +349,7 @@ public class BuildFileEditor extends AbstractDecoratedTextEditor implements Mode
 				root = EclipseScriptOutlineRoot.create(structureoutline);
 			} catch (Exception e) {
 				ImplActivator.getDefault().displayException(SakerLog.SEVERITY_WARNING,
-						"FAiled to process script outline.", e);
+						"Failed to process script outline.", e);
 				return ObjectUtils.EMPTY_OBJECT_ARRAY;
 			}
 			IScriptOutlineDesigner designer = getScriptOutlineDesigner(root);
